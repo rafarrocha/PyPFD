@@ -3,7 +3,7 @@ Introduction
 
 Installation: 
 
-pip install pyfluids
+pip install PyPFD
 
 
 
