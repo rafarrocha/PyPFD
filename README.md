@@ -57,6 +57,20 @@ def pfd_avg_1oo3_dif(λ_du1, λ_dd1, T1_month1, MTTR1, β1, βd1,
                       λ_du2, λ_dd2, T1_month2, MTTR2, β2, βd2,
                       λ_du3, λ_dd3, T1_month3, MTTR3, β3, βd3):
 
+Use example:
+
+from PyPFD import PyPFDAvg
+
+Print(PyPFDAvg.pfd_avg_2oo3(5E-8,0,0.02,0.01,12,8))
+# 4.57E-06
+
+Print(PyPFDAvg.pfd_avg_KooN(2,3,5E-8,0,0.02,0.01,12,8))
+# 4.57E-06
+
+
+
+
+
 Roadmap
 
 -Test and validate all existing formulas.
