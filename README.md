@@ -68,9 +68,6 @@ Print(PyPFDAvg.pfd_avg_KooN(2,3,5E-8,0,0.02,0.01,12,8))
 # 4.57E-06
 
 
-
-
-
 Roadmap
 
 -Test and validate all existing formulas.
