@@ -1,6 +1,13 @@
 # PyPFD
 Introduction
 
+Installation: 
+
+pip install pyfluids
+
+
+
+
 PyPFD is a Python library designed to calculate the Probability of Failure on Demand (PFD) in accordance with the international safety standards IEC 61508 and IEC 61511. It provides a way to estimate the reliability of Safety Devices, making it easier for engineers and safety professionals to perform consistent SIS assessments.
 
 It allows you to evaluate PFDavg for various architectures (1oo1, 1oo2, 2oo2, 2oo3, 1oo3, and KooN using a general formula).
