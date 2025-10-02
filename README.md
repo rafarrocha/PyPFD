@@ -1,38 +1,46 @@
 # PyPFD
-Introduction
+
+<b>Negrito com HTML</b>  
+<i>Itálico com HTML</i>  
+<u>Sublinhado com HTML</u>
+
+
+<b>Introduction</b>  
+PyPFD is a Python library designed to calculate the Probability of Failure on Demand (PFD) in accordance with the international safety standards IEC 61508 and IEC 61511. It provides a way to estimate the reliability of Safety Devices, making it easier for engineers and safety professionals to perform consistent SIS assessments.
 
 Installation: 
 
 pip install PyPFD
 
+Usage:
+from PyPFD import PyPFDAvg
 
+1oo1:
+   PyPFDAvg.pfd_avg_1oo1(λ_du, λ_dd, T1_month, MTTR):
 
+1oo1 with partial test:
+   PyPFDAvg.pfd_avg_1oo1_pt(λ_du, λ_dd, T1_month, T2_month, PDC, MTTR):
 
-PyPFD is a Python library designed to calculate the Probability of Failure on Demand (PFD) in accordance with the international safety standards IEC 61508 and IEC 61511. It provides a way to estimate the reliability of Safety Devices, making it easier for engineers and safety professionals to perform consistent SIS assessments.
+1oo2:
+   PyPFDAvg.pfd_avg_1oo2(λ_du, λ_dd, β, βd, T1_month, MTTR):
 
-It allows you to evaluate PFDavg for various architectures (1oo1, 1oo2, 2oo2, 2oo3, 1oo3, and KooN using a general formula).
+1oo2 with partial test:
+   PyPFDAvg.pfd_avg_1oo2_pt(λ_du, λ_dd, β, βd, T1_month, T2_month, PDC, MTTR):
 
-The library provides the following formulas:
+1oo3:
+   PyPFDAvg.pfd_avg_1oo3(λ_du, λ_dd, β, βd, T1_month, MTTR):
 
-def pfd_avg_1oo1(λ_du, λ_dd, T1_month, MTTR):
+2oo2:
+   PyPFDAvg.pfd_avg_2oo2(λ_du, λ_dd, T1_month, MTTR):
 
-def pfd_avg_1oo1_pt(λ_du, λ_dd, T1_month, T2_month, PDC, MTTR):
+2oo2 with partial test:
+   PyPFDAvg.pfd_avg_2oo2_pt(λ_du, λ_dd, T1_month, T2_month, PDC, MTTR):
 
-def pfd_avg_1oo2(λ_du, λ_dd, β, βd, T1_month, MTTR):
+2oo3:
+   PyPFDAvg.pfd_avg_2oo3(λ_du, λ_dd, β, βd, T1_month, MTTR):
 
-def pfd_avg_1oo2_pt(λ_du, λ_dd, β, βd, T1_month, T2_month, PDC, MTTR):
-
-def pfd_avg_1oo3(λ_du, λ_dd, β, βd, T1_month, MTTR):
-
-def pfd_avg_2oo2(λ_du, λ_dd, T1_month, MTTR):
-
-def pfd_avg_2oo2_pt(λ_du, λ_dd, T1_month, T2_month, PDC, MTTR):
-
-def pfd_avg_2oo3(λ_du, λ_dd, β, βd, T1_month, MTTR):
-
-def pfd_avg_KooN(K, N, λ_du, λ_dd, β, βd, T1_month, MTTR):
-
-Parameters:
+KooN:
+   PyPFDAvg.pfd_avg_KooN(K, N, λ_du, λ_dd, β, βd, T1_month, MTTR):
 
 λ_du = dangerous undetected failure rate per hour
 
@@ -75,6 +83,18 @@ Print(PyPFDAvg.pfd_avg_2oo3(5E-8,0,0.02,0.01,12,8))
 Print(PyPFDAvg.pfd_avg_KooN(2,3,5E-8,0,0.02,0.01,12,8))
 
  4.57E-06
+
+Using Class device for test (PyPFDClass):
+from PyPFD import PyPFDClass
+
+
+
+
+
+
+
+
+
 
 
 Roadmap
