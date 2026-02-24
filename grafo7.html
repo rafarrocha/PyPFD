@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>State Logic Modeler</title>
+    <style>
+        :root {
+            --normal: #90EE90; --degraded: #ADD8E6; --failure: #FFCC99;
+            --dark: #2c3e50; --accent: #3498db; --bg: #f4f7f6;
+        }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; overflow: hidden; background: var(--bg); }
+        
+        /* Header */
+        #header { background: var(--dark); color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
+        #workspace-title { background: transparent; border: none; border-bottom: 2px solid var(--accent); color: white; font-size: 1.1rem; padding: 2px 5px; outline: none; width: 250px; }
+        .controls button { cursor: pointer; padding: 6px 12px; border-radius: 4px; border: none; font-weight: bold; margin-left: 5px; background: #4b5d67; color: white; }
+
+        #canvas-container { position: relative; width: 100vw; height: calc(100vh - 60px); }
+        canvas { display: block; background: #fff; cursor: crosshair; }
+
+        /* Footer Attribution */
+        #attribution { position: absolute; bottom: 15px; left: 20px; font-size: 12px; color: #7f8c8d; font-weight: 500; pointer-events: none; }
+
+        /* Data HUD */
+        #data-hud {
+            position: absolute; bottom: 20px; right: 20px;
+            background: rgba(255, 255, 255, 0.98); border: 2px solid var(--dark);
+            padding: 15px; border-radius: 8px; width: 440px;
+            max-height: 70vh; overflow-y: auto; font-size: 11px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        h4 { margin: 12px 0 5px; border-bottom: 1px solid #ddd; text-transform: uppercase; color: #555; font-size: 10px; }
+        table { border-collapse: collapse; width: 100%; text-align: center; }
+        th, td { border: 1px solid #ccc; padding: 4px; }
+        th { background: #f8f9fa; }
+        .vector-box { background: #2c3e50; color: #2ecc71; padding: 8px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 12px; margin-top: 4px; word-break: break-all; }
+
+        /* Modals */
+        .modal { 
+            position: absolute; background: white; border-radius: 8px; 
+            padding: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.4); 
+            display: none; z-index: 1000; width: 220px; border-top: 5px solid var(--accent);
+        }
+        label { font-weight: bold; font-size: 11px; display: block; margin-top: 8px; }
+        input, select { width: 100%; margin: 4px 0 10px; padding: 6px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 4px; }
+        .btn-apply { background: var(--accent); color: white; width: 100%; padding: 8px; border: none; font-weight: bold; cursor: pointer; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+<div id="header">
+    <input type="text" id="workspace-title" value="My_System_Graph">
+    <div class="controls">
+        <button onclick="saveProject()">Save JSON</button>
+        <button onclick="document.getElementById('fileIn').click()">Load JSON</button>
+        <input type="file" id="fileIn" hidden onchange="loadProject(event)">
+        <button style="background:#27ae60" onclick="exportPython()">Export .py</button>
+    </div>
+</div>
+
+<div id="canvas-container">
+    <canvas id="mainCanvas"></canvas>
+    
+    <div id="attribution">Powered by rafabr with a little help from Gemini</div>
+
+    <div id="data-hud">
+        <h4>Transitional Matrix (by ID)</h4>
+        <div id="matrix-ui"></div>
+        <h4>Vector of States (1=Op, 0=Fail)</h4>
+        <div id="status-vector-ui" class="vector-box">[]</div>
+        <h4>Vector of Names</h4>
+        <div id="name-vector-ui" class="vector-box">[]</div>
+    </div>
+
+    <div id="stateModal" class="modal">
+        <label>Numerical ID:</label><input type="number" id="m_id">
+        <label>Value (Text):</label><input type="text" id="m_val">
+        <label>Status:</label>
+        <select id="m_status">
+            <option value="Normal">Normal</option>
+            <option value="Degraded">Degraded</option>
+            <option value="Failure">Failure</option>
+        </select>
+        <button class="btn-apply" onclick="applyStateEdits()">Apply Changes</button>
+        <button class="btn-apply" style="background:#95a5a6; margin-top:5px" onclick="closeModals()">Cancel</button>
+    </div>
+
+    <div id="linkModal" class="modal">
+        <label>Transition Value:</label><input type="text" id="m_l_val">
+        <button class="btn-apply" onclick="applyLinkEdits()">Update Link</button>
+        <button class="btn-apply" style="background:#95a5a6; margin-top:5px" onclick="closeModals()">Cancel</button>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('mainCanvas');
+    const ctx = canvas.getContext('2d');
+    let states = [], links = [];
+    let selected = null, dragging = null, connecting = null, dragCP = null;
+    let mouse = { x: 0, y: 0 };
+    const COLORS = { Normal: '#90EE90', Degraded: '#ADD8E6', Failure: '#FFCC99' };
+
+    function init() {
+        window.addEventListener('resize', resize);
+        resize();
+        requestAnimationFrame(renderLoop);
+    }
+
+    function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight - 60; }
+
+    // --- Math ---
+    function getBezierPoint(t, p0, p1, p2) {
+        return {
+            x: (1 - t) ** 2 * p0.x + 2 * (1 - t) * t * p1.x + t ** 2 * p2.x,
+            y: (1 - t) ** 2 * p0.y + 2 * (1 - t) * t * p1.y + t ** 2 * p2.y
+        };
+    }
+
+    // --- Interaction ---
+    canvas.addEventListener('dblclick', (e) => {
+        const id = states.length > 0 ? Math.max(...states.map(s => s.id)) + 1 : 1;
+        states.push({
+            uid: Date.now(), x: e.offsetX, y: e.offsetY,
+            id: id, value: "State " + id, status: 'Normal', r: 35
+        });
+        updateDataViews();
+    });
+
+    canvas.addEventListener('mousedown', (e) => {
+        const pos = { x: e.offsetX, y: e.offsetY };
+        const cpLink = links.find(l => Math.hypot(l.cp.x - pos.x, l.cp.y - pos.y) < 10);
+        
+        if (cpLink && e.button === 0) { dragCP = cpLink; return; }
+
+        const hit = states.find(s => Math.hypot(s.x - pos.x, s.y - pos.y) < s.r);
+        if (e.button === 0) {
+            dragging = hit; 
+            selected = hit || getLinkHit(pos.x, pos.y);
+            if (!hit && !selected) closeModals();
+        } else if (e.button === 2) connecting = hit;
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+        mouse = { x: e.offsetX, y: e.offsetY };
+        if (dragging) { dragging.x = e.offsetX; dragging.y = e.offsetY; }
+        if (dragCP) { dragCP.cp.x = e.offsetX; dragCP.cp.y = e.offsetY; }
+    });
+
+    window.addEventListener('mouseup', (e) => {
+        if (connecting && e.button === 2) {
+            const target = states.find(s => Math.hypot(s.x - e.offsetX, s.y - e.offsetY) < s.r);
+            if (target && target !== connecting) {
+                links.push({
+                    from: connecting.uid, to: target.uid, val: "1.0",
+                    cp: { x: (connecting.x + target.x)/2, y: (connecting.y + target.y)/2 - 60 }
+                });
+                updateDataViews();
+            }
+        }
+        dragging = connecting = dragCP = null;
+    });
+
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Delete' && selected) {
+            if (selected.uid) {
+                states = states.filter(s => s !== selected);
+                links = links.filter(l => l.from !== selected.uid && l.to !== selected.uid);
+            } else links = links.filter(l => l !== selected);
+            selected = null; updateDataViews();
+        }
+    });
+
+    canvas.oncontextmenu = (e) => e.preventDefault();
+
+    canvas.addEventListener('click', (e) => {
+        const sHit = states.find(s => Math.hypot(s.x - e.offsetX, s.y - e.offsetY) < s.r);
+        if (sHit) {
+            selected = sHit; showModal('stateModal', e.clientX, e.clientY);
+            document.getElementById('m_id').value = sHit.id;
+            document.getElementById('m_val').value = sHit.value;
+            document.getElementById('m_status').value = sHit.status;
+        } else {
+            const lHit = getLinkHit(e.offsetX, e.offsetY);
+            if (lHit) {
+                selected = lHit; showModal('linkModal', e.clientX, e.clientY);
+                document.getElementById('m_l_val').value = lHit.val;
+            }
+        }
+    });
+
+    function getLinkHit(x, y) {
+        return links.find(l => {
+            const s1 = states.find(s => s.uid === l.from), s2 = states.find(s => s.uid === l.to);
+            if (!s1 || !s2) return false;
+            const mid = getBezierPoint(0.5, s1, l.cp, s2);
+            return Math.hypot(mid.x - x, mid.y - y) < 20;
+        });
+    }
+
+    function showModal(id, x, y) {
+        closeModals();
+        const m = document.getElementById(id);
+        m.style.display = 'block';
+        m.style.left = Math.min(x, window.innerWidth - 250) + 'px';
+        m.style.top = Math.min(y, window.innerHeight - 300) + 'px';
+    }
+
+    function closeModals() { document.getElementById('stateModal').style.display = 'none'; document.getElementById('linkModal').style.display = 'none'; }
+
+    function applyStateEdits() {
+        if (selected) {
+            selected.id = parseInt(document.getElementById('m_id').value);
+            selected.value = document.getElementById('m_val').value;
+            selected.status = document.getElementById('m_status').value;
+        }
+        closeModals(); updateDataViews();
+    }
+
+    function applyLinkEdits() {
+        if (selected) selected.val = document.getElementById('m_l_val').value;
+        closeModals(); updateDataViews();
+    }
+
+    function updateDataViews() {
+        const sorted = [...states].sort((a, b) => a.id - b.id);
+        let h = '<table><tr><th>ID</th>' + sorted.map(s => `<th>${s.id}</th>`).join('') + '</tr>';
+        sorted.forEach(r => {
+            h += `<tr><td style="background:#eee"><b>${r.id}</b></td>`;
+            sorted.forEach(c => {
+                const l = links.find(li => li.from === r.uid && li.to === c.uid);
+                h += `<td>${l ? l.val : '0'}</td>`;
+            });
+            h += '</tr>';
+        });
+        document.getElementById('matrix-ui').innerHTML = h + '</table>';
+        document.getElementById('status-vector-ui').innerText = `[${sorted.map(s => s.status === 'Failure' ? 0 : 1).join(', ')}]`;
+        document.getElementById('name-vector-ui').innerText = `[${sorted.map(s => `"${s.value}"`).join(', ')}]`;
+    }
+
+    function saveProject() {
+        const title = document.getElementById('workspace-title').value;
+        const blob = new Blob([JSON.stringify({ states, links, title })], { type: 'application/json' });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = title + ".json"; a.click();
+    }
+
+    function loadProject(e) {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            const d = JSON.parse(ev.target.result);
+            states = d.states; links = d.links;
+            document.getElementById('workspace-title').value = d.title || "Workspace";
+            updateDataViews();
+        };
+        reader.readAsText(e.target.files[0]);
+    }
+
+    function exportPython() {
+        const title = document.getElementById('workspace-title').value;
+        const sorted = [...states].sort((a, b) => a.id - b.id);
+        let py = `# Workspace: ${title}\n\n`;
+        py += `transition_matrix = [\n`;
+        sorted.forEach(r => {
+            const row = sorted.map(c => {
+                const l = links.find(li => li.from === r.uid && li.to === c.uid);
+                return l ? parseFloat(l.val) || l.val : 0.0;
+            });
+            py += `    [${row.join(", ")}],\n`;
+        });
+        py += `]\n\n`;
+        py += `vector_of_states = [${sorted.map(s => s.status === 'Failure' ? 0 : 1).join(", ")}]\n`;
+        py += `vector_of_names = [${sorted.map(s => `"${s.value}"`).join(", ")}]\n`;
+        
+        const blob = new Blob([py], { type: 'text/plain' });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = title + ".py"; a.click();
+    }
+
+    function renderLoop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        links.forEach(l => {
+            const s1 = states.find(s => s.uid === l.from), s2 = states.find(s => s.uid === l.to);
+            if (!s1 || !s2) return;
+            ctx.beginPath(); ctx.moveTo(s1.x, s1.y);
+            ctx.quadraticCurveTo(l.cp.x, l.cp.y, s2.x, s2.y);
+            ctx.strokeStyle = (selected === l) ? '#e67e22' : '#bdc3c7';
+            ctx.lineWidth = 2; ctx.stroke();
+
+            const pA = getBezierPoint(0.9, s1, l.cp, s2), pB = getBezierPoint(1, s1, l.cp, s2);
+            const ang = Math.atan2(pB.y - pA.y, pB.x - pA.x);
+            const tx = s2.x - s2.r * Math.cos(ang), ty = s2.y - s2.r * Math.sin(ang);
+            ctx.beginPath(); ctx.moveTo(tx, ty);
+            ctx.lineTo(tx - 12*Math.cos(ang-0.4), ty - 12*Math.sin(ang-0.4));
+            ctx.lineTo(tx - 12*Math.cos(ang+0.4), ty - 12*Math.sin(ang+0.4));
+            ctx.fillStyle = ctx.strokeStyle; ctx.fill();
+
+            if (selected === l) {
+                ctx.fillStyle = "white"; ctx.strokeStyle = "black";
+                ctx.fillRect(l.cp.x - 4, l.cp.y - 4, 8, 8); ctx.strokeRect(l.cp.x - 4, l.cp.y - 4, 8, 8);
+            }
+            const mid = getBezierPoint(0.5, s1, l.cp, s2);
+            ctx.fillStyle = "#333"; ctx.font = "bold 12px Arial"; ctx.textAlign="center";
+            ctx.fillText(l.val, mid.x, mid.y - 10);
+        });
+
+        if (connecting) {
+            ctx.beginPath(); ctx.moveTo(connecting.x, connecting.y); ctx.lineTo(mouse.x, mouse.y);
+            ctx.setLineDash([5, 5]); ctx.strokeStyle = "#999"; ctx.stroke(); ctx.setLineDash([]);
+        }
+
+        states.forEach(s => {
+            ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+            ctx.fillStyle = COLORS[s.status]; ctx.fill();
+            ctx.strokeStyle = (selected === s) ? '#e67e22' : '#2c3e50'; ctx.lineWidth = (selected === s) ? 4 : 2; ctx.stroke();
+            ctx.fillStyle = '#2c3e50'; ctx.textAlign = 'center';
+            ctx.font = 'bold 12px Arial'; ctx.fillText(s.value, s.x, s.y);
+            ctx.font = '10px Arial'; ctx.fillText(`ID:${s.id}`, s.x, s.y + 15);
+        });
+        requestAnimationFrame(renderLoop);
+    }
+    init();
+</script>
+</body>
+</html>
