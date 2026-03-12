@@ -2,349 +2,452 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>State Logic Modeler Pro</title>
+    <title>State Logic Modeler Pro - Pyodide Final Fix</title>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"></script>
     <style>
         :root {
             --normal: #90EE90; --degraded: #ADD8E6; --failure: #FFCC99;
-            --dark: #2c3e50; --accent: #3498db; --bg: #f4f7f6;
+            --dark: #2c3e50; --accent: #3498db; --bg: #f4f7f6; --sidebar: #ecf0f1;
         }
-        body { font-family: 'Segoe UI', sans-serif; margin: 0; overflow: hidden; background: var(--bg); }
-        
-        /* Header */
-        #header { background: var(--dark); color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.3); z-index: 100; position: relative; }
-        #workspace-title { background: transparent; border: none; border-bottom: 2px solid var(--accent); color: white; font-size: 1.1rem; padding: 2px 5px; outline: none; width: 250px; }
-        .controls button { cursor: pointer; padding: 6px 12px; border-radius: 4px; border: none; font-weight: bold; margin-left: 5px; background: #4b5d67; color: white; transition: 0.2s; }
-        .controls button:hover { background: #607d8b; }
-
-        /* Canvas Area */
-        #canvas-container { position: relative; width: 100vw; height: calc(100vh - 60px); }
-        canvas { display: block; background: #fff; cursor: crosshair; }
-
-        /* Footer Attribution */
-        #attribution { position: absolute; bottom: 15px; left: 20px; font-size: 12px; color: #7f8c8d; font-weight: 500; pointer-events: none; }
-
-        /* Data HUD */
-        #data-hud {
-            position: absolute; bottom: 20px; right: 20px;
-            background: rgba(255, 255, 255, 0.98); border: 2px solid var(--dark);
-            padding: 15px; border-radius: 8px; width: 440px;
-            max-height: 70vh; overflow-y: auto; font-size: 11px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-        }
-        h4 { margin: 12px 0 5px; border-bottom: 1px solid #ddd; text-transform: uppercase; color: #555; font-size: 10px; }
-        table { border-collapse: collapse; width: 100%; text-align: center; }
-        th, td { border: 1px solid #ccc; padding: 4px; }
-        th { background: #f8f9fa; }
-        .vector-box { background: #2c3e50; color: #2ecc71; padding: 8px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 12px; margin-top: 4px; word-break: break-all; }
-
-        /* Draggable Modals */
-        .modal { 
-            position: absolute; background: white; border-radius: 8px; 
-            box-shadow: 0 10px 40px rgba(0,0,0,0.4); 
-            display: none; z-index: 1000; width: 240px; overflow: hidden; border: 1px solid #ccc;
-        }
-        .modal-header { background: var(--dark); color: white; padding: 8px 12px; cursor: move; font-size: 12px; font-weight: bold; display: flex; justify-content: space-between; }
-        .modal-body { padding: 15px; }
-        label { font-weight: bold; font-size: 11px; display: block; margin-top: 8px; }
-        input, select { width: 100%; margin: 4px 0 10px; padding: 6px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 4px; }
-        .btn-apply { background: var(--accent); color: white; width: 100%; padding: 8px; border: none; font-weight: bold; cursor: pointer; border-radius: 4px; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; overflow: hidden; background: var(--bg); display: flex; flex-direction: column; height: 100vh; }
+        #header { background: var(--dark); color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; z-index: 100; }
+        #main-container { display: flex; flex: 1; position: relative; overflow: hidden; }
+        #sidebar-vars { width: 300px; background: var(--sidebar); border-right: 2px solid #bdc3c7; padding: 15px; overflow-y: auto; }
+        .var-table { width: 100%; margin-bottom: 20px; background: white; border-collapse: collapse; font-size: 12px; }
+        .var-table th, .var-table td { border: 1px solid #ddd; padding: 6px; }
+        .add-btn { background: var(--accent); color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; width: 100%; margin-bottom: 10px; }
+        #canvas-container { flex: 1; position: relative; background: white; }
+        canvas { display: block; cursor: crosshair; }
+        #data-hud { position: absolute; bottom: 20px; right: 20px; background: rgba(255, 255, 255, 0.98); border: 2px solid var(--dark); padding: 15px; border-radius: 8px; width: 450px; max-height: 50vh; overflow-y: auto; font-size: 11px; }
+        .matrix-table { border-collapse: collapse; width: 100%; text-align: center; margin-bottom: 15px; }
+        .matrix-table td { border: 1px solid #ccc; padding: 4px; font-family: monospace; }
+        .vector-box { background: #2c3e50; color: #2ecc71; padding: 10px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 13px; }
+        .py-result { margin-top: 10px; padding: 10px; background: #fdfce5; border: 1px solid #f1c40f; border-radius: 4px; font-weight: bold; }
+        .modal { position: absolute; background: white; border-radius: 8px; display: none; z-index: 1000; width: 240px; border: 1px solid #ccc; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        .modal label { display: block; margin-top: 10px; font-size: 11px; font-weight: bold; }
+        .modal select, .modal input { width: 100%; margin-top: 5px; padding: 5px; box-sizing: border-box; }
+        .btn-io { background: #7f8c8d; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-left: 5px; }
     </style>
 </head>
 <body>
 
 <div id="header">
-    <input type="text" id="workspace-title" value="My_System_Graph">
+    <div style="font-weight:bold">Markov Solver for PFD by Rafael Rocha</div>
     <div class="controls">
-        <button onclick="saveProject()">Save JSON</button>
-        <button onclick="document.getElementById('fileIn').click()">Load JSON</button>
-        <input type="file" id="fileIn" hidden onchange="loadProject(event)">
-        <button style="background:#27ae60" onclick="exportPython()">Export .py</button>
+        <button class="btn-io" onclick="saveProject()">Salvar Projeto</button>
+        <button class="btn-io" onclick="document.getElementById('fileInput').click()">Carregar Projeto</button>
+        <input type="file" id="fileInput" style="display:none" onchange="loadProject(event)">
+        <button style="background:#e67e22; color:white; border:none; padding:8px 15px; border-radius:4px; cursor:pointer; font-weight:bold; margin-left:10px;" onclick="runPythonCalculation()">Calcular PFDavg (PyPFD)</button>
     </div>
 </div>
 
-<div id="canvas-container">
-    <canvas id="mainCanvas"></canvas>
-    
-    <div id="attribution">Powered by rafabr with a little help from Gemini</div>
-
-    <div id="data-hud">
-        <h4>Transitional Matrix (by ID)</h4>
-        <div id="matrix-ui"></div>
-        <h4>Vector of States (1=Op, 0=Fail)</h4>
-        <div id="status-vector-ui" class="vector-box">[]</div>
-        <h4>Vector of Names</h4>
-        <div id="name-vector-ui" class="vector-box">[]</div>
+<div id="main-container">
+    <div id="sidebar-vars">
+        <h4>Taxas (Rates)</h4>
+        <table class="var-table" id="table-rates">
+            <thead><tr><th>Nome</th><th>Valor</th><th></th></tr></thead>
+            <tbody></tbody>
+        </table>
+        <button class="add-btn" onclick="addVariable('rates')">+ Add Taxa</button>
+        <hr>
+        <h4>Testes</h4>
+        <table class="var-table" id="table-testes">
+            <thead><tr><th>Nome</th><th>Valor</th><th></th></tr></thead>
+            <tbody></tbody>
+        </table>
+        <button class="add-btn" onclick="addVariable('testes')">+ Add Teste</button>
+        <p style="font-size: 10px; color: #7f8c8d; margin-top: 20px;">* Clique em um item e aperte <b>DEL</b> para remover.</p>
     </div>
 
-    <div id="stateModal" class="modal">
-        <div class="modal-header" onmousedown="dragModal(event, 'stateModal')">Edit State <span>⋮⋮</span></div>
-        <div class="modal-body">
-            <label>Numerical ID:</label><input type="number" id="m_id">
-            <label>Value (Text):</label><input type="text" id="m_val">
-            <label>Radius (Size):</label><input type="number" id="m_rad" min="20" max="100">
-            <label>Status:</label>
-            <select id="m_status">
-                <option value="Normal">Normal</option>
-                <option value="Degraded">Degraded</option>
-                <option value="Failure">Failure</option>
-            </select>
-            <button class="btn-apply" onclick="applyStateEdits()">Apply</button>
-            <button class="btn-apply" style="background:#95a5a6; margin-top:5px" onclick="closeModals()">Close</button>
+    <div id="canvas-container">
+        <canvas id="mainCanvas"></canvas>
+        <div id="data-hud">
+            <h4>Matriz Simbólica</h4>
+            <div id="matrix-ui"></div>
+            <h4>Vetor de Estados</h4>
+            <div id="status-vector-ui" class="vector-box">[]</div>
+            <div id="python-output" class="py-result">Python: Inicializando...</div>
         </div>
     </div>
+</div>
 
-    <div id="linkModal" class="modal">
-        <div class="modal-header" onmousedown="dragModal(event, 'linkModal')">Edit Transition <span>⋮⋮</span></div>
-        <div class="modal-body">
-            <label>Transition Value (Text):</label><input type="text" id="m_l_val">
-            <button class="btn-apply" onclick="applyLinkEdits()">Apply</button>
-            <button class="btn-apply" style="background:#95a5a6; margin-top:5px" onclick="closeModals()">Close</button>
-        </div>
-    </div>
+<div id="linkModal" class="modal">
+    <label>Fórmula (Ex: λ_du*PDC):</label>
+    <input type="text" id="m_l_val">
+    <button onclick="applyLinkEdits()" style="width:100%; background:var(--accent); color:white; border:none; padding:8px; cursor:pointer; margin-top:10px;">Aplicar Link</button>
+</div>
+
+<div id="stateModal" class="modal">
+    <label>Nome do Estado:</label>
+    <input type="text" id="m_s_name">
+    <label>Status:</label>
+    <select id="m_s_status">
+        <option value="Normal">Normal</option>
+        <option value="Degraded">Degraded</option>
+        <option value="Failure">Failure</option>
+    </select>
+    <button onclick="applyStateEdits()" style="width:100%; background:var(--accent); color:white; border:none; padding:8px; cursor:pointer; margin-top:10px;">Salvar Estado</button>
 </div>
 
 <script>
     const canvas = document.getElementById('mainCanvas');
     const ctx = canvas.getContext('2d');
-    let states = [], links = [];
-    let selected = null, dragging = null, connecting = null, dragCP = null;
-    let mouse = { x: 0, y: 0 };
+    let states = [], links = [], variables = { 
+        rates: [{n:'λ_du', v:0.00001}, {n:'λ_dd', v:0.0003}],
+        testes: [{n:'T', v:12}] 
+    };
+    let selected = null, dragging = null, connecting = null, dragCP = null, mouse = {x:0, y:0};
     const COLORS = { Normal: '#90EE90', Degraded: '#ADD8E6', Failure: '#FFCC99' };
 
+    let pyodide;
+    async function loadPy() { 
+        try {
+            document.getElementById('python-output').innerText = "Python: Carregando Motor...";
+            pyodide = await loadPyodide();
+            await pyodide.loadPackage("micropip");
+            const micropip = pyodide.pyimport("micropip");
+            document.getElementById('python-output').innerText = "Python: Instalando PyPFD...";
+            //await micropip.install('PyPFD');
+            await micropip.install('PyPFD');
+            document.getElementById('python-output').innerText = "Python: Pronto (PyPFD Carregado)";
+        } catch(e) { 
+            console.error(e);
+            document.getElementById('python-output').innerText = "Erro ao carregar bibliotecas Python"; 
+        }
+    }
+    loadPy();
+
     function init() {
-        window.addEventListener('resize', resize);
-        resize();
+        window.addEventListener('resize', () => { 
+            canvas.width = document.getElementById('canvas-container').clientWidth;
+            canvas.height = document.getElementById('canvas-container').clientHeight;
+        });
+        window.dispatchEvent(new Event('resize'));
+
+        // Atalho para Deletar
+        window.addEventListener('keydown', e => {
+            if((e.key === "Delete") && selected) {
+                if(selected.uid) { // É um estado
+                    links = links.filter(l => l.from !== selected.uid && l.to !== selected.uid);
+                    states = states.filter(s => s !== selected);
+                } else { // É um link
+                    links = links.filter(l => l !== selected);
+                }
+                selected = null;
+                updateDataViews();
+            }
+        });
+
+        renderVariables();
+        updateDataViews();
         requestAnimationFrame(renderLoop);
     }
 
-    function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight - 60; }
-
-    // --- Modal Dragging Logic ---
-    function dragModal(e, id) {
-        const modal = document.getElementById(id);
-        let offsetX = e.clientX - modal.offsetLeft;
-        let offsetY = e.clientY - modal.offsetTop;
-        
-        function move(ev) {
-            modal.style.left = (ev.clientX - offsetX) + 'px';
-            modal.style.top = (ev.clientY - offsetY) + 'px';
-        }
-        function stop() { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', stop); }
-        window.addEventListener('mousemove', move);
-        window.addEventListener('mouseup', stop);
+    // --- Funções de IO ---
+    function saveProject() {
+        const data = JSON.stringify({ states, links, variables }, null, 2);
+        const blob = new Blob([data], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'markov_model.json';
+        a.click();
     }
 
-    // --- Math ---
-    function getBezierPoint(t, p0, p1, p2) {
-        return {
-            x: (1 - t) ** 2 * p0.x + 2 * (1 - t) * t * p1.x + t ** 2 * p2.x,
-            y: (1 - t) ** 2 * p0.y + 2 * (1 - t) * t * p1.y + t ** 2 * p2.y
+    function loadProject(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = e => {
+            const content = JSON.parse(e.target.result);
+            states = content.states || [];
+            links = content.links || [];
+            variables = content.variables || { rates: [], testes: [] };
+            renderVariables();
+            updateDataViews();
         };
+        reader.readAsText(file);
     }
 
-    // --- Interaction ---
-    canvas.addEventListener('dblclick', (e) => {
-        const id = states.length > 0 ? Math.max(...states.map(s => s.id)) + 1 : 1;
-        states.push({
-            uid: Date.now(), x: e.offsetX, y: e.offsetY,
-            id: id, value: "State " + id, status: 'Normal', r: 35
+    function addVariable(type) {
+        const prefix = type === 'rates' ? 'λ' : 'T';
+        variables[type].push({ n: prefix + (variables[type].length + 1), v: 1 });
+        renderVariables();
+    }
+
+    function renderVariables() {
+        ['rates', 'testes'].forEach(type => {
+            const tbody = document.querySelector(`#table-${type} tbody`);
+            tbody.innerHTML = '';
+            variables[type].forEach((v, i) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td><input type="text" value="${v.n}" onchange="variables.${type}[${i}].n=this.value; updateDataViews()"></td>
+                                <td><input type="number" step="any" value="${v.v}" onchange="variables.${type}[${i}].v=parseFloat(this.value)"></td>
+                                <td onclick="variables.${type}.splice(${i},1); renderVariables(); updateDataViews()" style="color:red; cursor:pointer">×</td>`;
+                tbody.appendChild(tr);
+            });
         });
-        updateDataViews();
+    }
+
+    canvas.addEventListener('mousedown', e => {
+        const pos = {x:e.offsetX, y:e.offsetY};
+        const cp = links.find(l => selected === l && Math.hypot(l.cp.x-pos.x, l.cp.y-pos.y) < 15);
+        if(cp) { dragCP = cp; return; }
+        const s = states.find(s => Math.hypot(s.x-pos.x, s.y-pos.y) < s.r);
+        if(e.button === 0) { dragging = s; selected = s || getLinkHit(pos.x, pos.y); }
+        else if(e.button === 2) { connecting = s; }
     });
 
-    canvas.addEventListener('mousedown', (e) => {
-        const pos = { x: e.offsetX, y: e.offsetY };
-        const cpLink = links.find(l => Math.hypot(l.cp.x - pos.x, l.cp.y - pos.y) < 12);
-        
-        if (cpLink && e.button === 0) { dragCP = cpLink; return; }
-
-        const hit = states.find(s => Math.hypot(s.x - pos.x, s.y - pos.y) < s.r);
-        if (e.button === 0) {
-            dragging = hit; 
-            selected = hit || getLinkHit(pos.x, pos.y);
-        } else if (e.button === 2) connecting = hit;
+    canvas.addEventListener('mousemove', e => {
+        mouse = {x:e.offsetX, y:e.offsetY};
+        if(dragging) { dragging.x = e.offsetX; dragging.y = e.offsetY; }
+        if(dragCP) { dragCP.cp.x = e.offsetX; dragCP.cp.y = e.offsetY; }
     });
 
-    canvas.addEventListener('mousemove', (e) => {
-        mouse = { x: e.offsetX, y: e.offsetY };
-        if (dragging) { dragging.x = e.offsetX; dragging.y = e.offsetY; }
-        if (dragCP) { dragCP.cp.x = e.offsetX; dragCP.cp.y = e.offsetY; }
-    });
-
-    window.addEventListener('mouseup', (e) => {
-        if (connecting && e.button === 2) {
-            const target = states.find(s => Math.hypot(s.x - e.offsetX, s.y - e.offsetY) < s.r);
-            if (target && target !== connecting) {
-                links.push({
-                    from: connecting.uid, to: target.uid, val: "1.0",
-                    cp: { x: (connecting.x + target.x)/2, y: (connecting.y + target.y)/2 - 80 }
-                });
+    window.addEventListener('mouseup', () => {
+        if(connecting) {
+            const target = states.find(s => Math.hypot(s.x-mouse.x, s.y-mouse.y) < s.r);
+            if(target && target !== connecting) {
+                links.push({from: connecting.uid, to: target.uid, val: "0", cp: {x:(connecting.x+target.x)/2, y:(connecting.y+target.y)/2-40}});
                 updateDataViews();
             }
         }
         dragging = connecting = dragCP = null;
     });
 
-    window.addEventListener('keydown', (e) => {
-        if (e.key === 'Delete' && selected) {
-            if (selected.uid) {
-                states = states.filter(s => s !== selected);
-                links = links.filter(l => l.from !== selected.uid && l.to !== selected.uid);
-            } else links = links.filter(l => l !== selected);
-            selected = null; updateDataViews();
+    canvas.addEventListener('dblclick', e => {
+        const id = states.length ? Math.max(...states.map(s=>s.id))+1 : 1;
+        states.push({uid: Date.now(), x:e.offsetX, y:e.offsetY, id, value: "S"+id, status:'Normal', r:30});
+        updateDataViews();
+    });
+
+    canvas.addEventListener('click', e => {
+        const pos = {x:e.offsetX, y:e.offsetY};
+        const s = states.find(s => Math.hypot(s.x-pos.x, s.y-pos.y) < s.r);
+        const l = getLinkHit(pos.x, pos.y);
+        document.getElementById('linkModal').style.display = 'none';
+        document.getElementById('stateModal').style.display = 'none';
+        if(s) {
+            selected = s;
+            document.getElementById('m_s_name').value = s.value;
+            document.getElementById('m_s_status').value = s.status;
+            const m = document.getElementById('stateModal');
+            m.style.display = 'block'; m.style.left = e.clientX+'px'; m.style.top = e.clientY+'px';
+        } else if(l) { 
+            selected = l;
+            document.getElementById('m_l_val').value = l.val;
+            const m = document.getElementById('linkModal');
+            m.style.display = 'block'; m.style.left = e.clientX+'px'; m.style.top = e.clientY+'px';
         }
     });
 
-    canvas.oncontextmenu = (e) => e.preventDefault();
-
-    canvas.addEventListener('click', (e) => {
-        const sHit = states.find(s => Math.hypot(s.x - e.offsetX, s.y - e.offsetY) < s.r);
-        if (sHit) {
-            selected = sHit; showModal('stateModal', e.clientX, e.clientY);
-            document.getElementById('m_id').value = sHit.id;
-            document.getElementById('m_val').value = sHit.value;
-            document.getElementById('m_rad').value = sHit.r;
-            document.getElementById('m_status').value = sHit.status;
-        } else {
-            const lHit = getLinkHit(e.offsetX, e.offsetY);
-            if (lHit) {
-                selected = lHit; showModal('linkModal', e.clientX, e.clientY);
-                document.getElementById('m_l_val').value = lHit.val;
-            }
+    function applyStateEdits() {
+        if(selected && selected.uid) { 
+            selected.value = document.getElementById('m_s_name').value;
+            selected.status = document.getElementById('m_s_status').value;
+            updateDataViews();
         }
-    });
+        document.getElementById('stateModal').style.display = 'none';
+    }
+
+    function applyLinkEdits() { 
+        if(selected && !selected.uid) { 
+            selected.val = document.getElementById('m_l_val').value; 
+            updateDataViews(); 
+        }
+        document.getElementById('linkModal').style.display='none'; 
+    }
 
     function getLinkHit(x, y) {
         return links.find(l => {
-            const s1 = states.find(s => s.uid === l.from), s2 = states.find(s => s.uid === l.to);
-            if (!s1 || !s2) return false;
+            const s1 = states.find(s=>s.uid===l.from), s2 = states.find(s=>s.uid===l.to);
+            if(!s1 || !s2) return false;
             const mid = getBezierPoint(0.5, s1, l.cp, s2);
-            return Math.hypot(mid.x - x, mid.y - y) < 20;
+            return Math.hypot(mid.x-x, mid.y-y) < 20;
         });
     }
 
-    function showModal(id, x, y) {
-        const m = document.getElementById(id);
-        if (m.style.display !== 'block') { // Only position if opening fresh
-            m.style.left = Math.min(x, window.innerWidth - 250) + 'px';
-            m.style.top = Math.min(y, window.innerHeight - 350) + 'px';
-        }
-        m.style.display = 'block';
-    }
-
-    function closeModals() { document.getElementById('stateModal').style.display = 'none'; document.getElementById('linkModal').style.display = 'none'; }
-
-    function applyStateEdits() {
-        if (selected) {
-            selected.id = parseInt(document.getElementById('m_id').value);
-            selected.value = document.getElementById('m_val').value;
-            selected.r = parseInt(document.getElementById('m_rad').value);
-            selected.status = document.getElementById('m_status').value;
-        }
-        updateDataViews();
-    }
-
-    function applyLinkEdits() {
-        if (selected) selected.val = document.getElementById('m_l_val').value;
-        updateDataViews();
+    function getBezierPoint(t, p0, p1, p2) {
+        return { x: (1-t)**2*p0.x + 2*(1-t)*t*p1.x + t**2*p2.x, y: (1-t)**2*p0.y + 2*(1-t)*t*p1.y + t**2*p2.y };
     }
 
     function updateDataViews() {
-        const sorted = [...states].sort((a, b) => a.id - b.id);
-        let h = '<table><tr><th>ID</th>' + sorted.map(s => `<th>${s.id}</th>`).join('') + '</tr>';
+        const sorted = [...states].sort((a,b)=>a.id-b.id);
+        let h = '<table class="matrix-table"><tr><th>ID</th>' + sorted.map(s=>`<th>${s.id}</th>`).join('') + '</tr>';
         sorted.forEach(r => {
-            h += `<tr><td style="background:#eee"><b>${r.id}</b></td>`;
+            h += `<tr><td>${r.id}</td>`;
             sorted.forEach(c => {
-                const l = links.find(li => li.from === r.uid && li.to === c.uid);
+                const l = links.find(li => li.from===r.uid && li.to===c.uid);
                 h += `<td>${l ? l.val : '0'}</td>`;
             });
             h += '</tr>';
         });
         document.getElementById('matrix-ui').innerHTML = h + '</table>';
-        document.getElementById('status-vector-ui').innerText = `[${sorted.map(s => s.status === 'Failure' ? 0 : 1).join(', ')}]`;
-        document.getElementById('name-vector-ui').innerText = `[${sorted.map(s => `"${s.value}"`).join(', ')}]`;
+        document.getElementById('status-vector-ui').innerText = `[${sorted.map(s=>(s.status==='Failure'?0:1)).join(', ')}]`;
     }
 
-    function saveProject() {
-        const title = document.getElementById('workspace-title').value;
-        const blob = new Blob([JSON.stringify({ states, links, title })], { type: 'application/json' });
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = title + ".json"; a.click();
-    }
-
-    function loadProject(e) {
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            const d = JSON.parse(ev.target.result);
-            states = d.states; links = d.links;
-            document.getElementById('workspace-title').value = d.title || "Workspace";
-            updateDataViews();
-        };
-        reader.readAsText(e.target.files[0]);
-    }
-
-    function exportPython() {
-        const title = document.getElementById('workspace-title').value;
+    async function runPythonCalculation() {
+        if (!pyodide) return alert("Pyodide ainda está carregando...");
         const sorted = [...states].sort((a, b) => a.id - b.id);
-        let py = `# Workspace: ${title}\n\n`;
-        py += `transition_matrix = [\n`;
-        sorted.forEach(r => {
-            const rowStr = sorted.map(c => {
-                const l = links.find(li => li.from === r.uid && li.to === c.uid);
-                // Return original string value to avoid parseFloat precision issues
-                return l ? l.val : "0.0"; 
-            }).join(", ");
-            py += `    [${rowStr}],\n`;
-        });
-        py += `]\n\n`;
-        py += `vector_of_states = [${sorted.map(s => s.status === 'Failure' ? 0 : 1).join(", ")}]\n`;
-        py += `vector_of_names = [${sorted.map(s => "'" + s.value + "'").join(", ")}]\n`;
+        const matrixData = sorted.map(r => sorted.map(c => {
+            const l = links.find(li => li.from === r.uid && li.to === c.uid);
+            return l ? String(l.val).trim() : "0";
+        }));
+        const state_v = sorted.map(s=>(s.status==='Failure'?0:1));
         
-        const blob = new Blob([py], { type: 'text/plain' });
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = title + ".py"; a.click();
+        pyodide.globals.set("js_matrix_raw", matrixData);
+        pyodide.globals.set("js_rates_vars", variables.rates);
+        pyodide.globals.set("js_test_vars", variables.testes);
+        pyodide.globals.set("js_state_vector", state_v);
+
+        const pythonCode = `
+import logging
+import re
+
+from PyPFD import PyPFDMarkov
+
+def solve_matrix():
+    try:
+        py_matrix = js_matrix_raw.to_py()
+        py_rates = js_rates_vars.to_py()
+        py_tests = js_test_vars.to_py()
+        py_state_v = js_state_vector.to_py()
+
+        py_rates = sorted(py_rates, key=lambda x: len(x['n']), reverse=True)
+        py_tests = sorted(py_tests, key=lambda x: len(x['n']), reverse=True)
+
+        print("------ Inicio - Dados de entrada")
+        print(type(py_matrix))
+        print(py_matrix)
+        print(type(py_rates))
+        print(py_rates)
+        print(type(py_tests))
+        print(py_tests)
+        print(type(py_state_v))
+        print(py_state_v)
+        print("------ Fim    - Dados de entrada")
+
+        contexto = {item['n']: item['v'] for item in py_rates} | {item['n']: 0 for item in py_tests}
+
+        mkv_matrix = []
+        for linha in py_matrix:
+            nova_linha = []
+            for formula in linha:
+                # eval(expressao, globais, locais)
+                # Passamos o 'contexto' como as variáveis locais disponíveis para a fórmula
+                resultado = eval(formula, {}, contexto)
+                nova_linha.append(resultado)
+            mkv_matrix.append(nova_linha)
+
+
+        linhas = len(mkv_matrix)
+        colunas = len(mkv_matrix[0])
+        
+        
+        #Normaliza as linhas
+        for i in range(linhas):
+            mkv_matrix[i][i] = 1
+            for j in range(colunas):
+                if i != j:
+                    mkv_matrix[i][i] -= mkv_matrix[i][j] 
+
+
+        tst_matrix = []
+        tst_v = []
+
+        #print(py_tests)
+  
+        for tst in py_tests:
+            tstM = [[0 for j in range(colunas)] for i in range(linhas)]
+            for i in range(linhas):
+                for j in range(colunas):
+                    if py_matrix[i][j] == tst['n']:
+                        tstM[i][j] = 1
+
+            for k in range(linhas):
+                tstM[k][k] = 1
+                for l in range(colunas):
+                    if k != l:
+                        tstM[k][k] -= tstM[k][l] 
+
+            tst_matrix.append(tstM)
+            tst_v.append(tst['v'])
+
+
+
+        print("------ Inicio - Mkv_Matrix")
+        print(mkv_matrix)
+        #for linha in mkv_matrix:
+        #    print(linha)
+        print("------ Fim    - Mkv_Matrix")
+
+        print("------ Inicio - Tst_Matrix")
+        print(tst_matrix)
+        #for linha in tst_matrix:
+        #    #print("T:")
+        #    print(linha)
+        print("------ Fim    - Tst_Matrix")
+
+        print("------ Inicio - Tst_Vector")
+        print(tst_v)
+        print("------ Fim    - Tst_Matrix")
+        
+        pfd_avg = PyPFDMarkov.markov_cal_Ntest(mkv_matrix,py_state_v,tst_matrix,tst_v)
+        mkv_pfd_avg = pfd_avg["pfdavg"]
+        return f"{mkv_pfd_avg:.2e}"
+
+    except Exception as e: return f"Erro Python: {str(e)}"
+solve_matrix()`;
+        try {
+            document.getElementById('python-output').innerHTML = "Calculando"  
+            const result = await pyodide.runPythonAsync(pythonCode);
+            document.getElementById('python-output').innerHTML = String(result).startsWith("Erro") ? `<span style="color:red">${result}</span>` : `PFDavg: ${result}`;
+        } catch (err) { console.error(err); }
     }
 
     function renderLoop() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
+        ctx.clearRect(0,0,canvas.width,canvas.height);
         links.forEach(l => {
             const s1 = states.find(s => s.uid === l.from), s2 = states.find(s => s.uid === l.to);
             if (!s1 || !s2) return;
-            ctx.beginPath(); ctx.moveTo(s1.x, s1.y);
+            ctx.beginPath(); 
+            ctx.moveTo(s1.x, s1.y);
             ctx.quadraticCurveTo(l.cp.x, l.cp.y, s2.x, s2.y);
             ctx.strokeStyle = (selected === l) ? '#e67e22' : '#bdc3c7';
-            ctx.lineWidth = 2; ctx.stroke();
-
-            const pA = getBezierPoint(0.9, s1, l.cp, s2), pB = getBezierPoint(1, s1, l.cp, s2);
+            ctx.lineWidth = (selected === l) ? 3 : 2; 
+            ctx.stroke();
+            const pA = getBezierPoint(0.9, s1, l.cp, s2), pB = getBezierPoint(1.0, s1, l.cp, s2);
             const ang = Math.atan2(pB.y - pA.y, pB.x - pA.x);
-            const tx = s2.x - s2.r * Math.cos(ang), ty = s2.y - s2.r * Math.sin(ang);
-            ctx.beginPath(); ctx.moveTo(tx, ty);
-            ctx.lineTo(tx - 12*Math.cos(ang-0.4), ty - 12*Math.sin(ang-0.4));
-            ctx.lineTo(tx - 12*Math.cos(ang+0.4), ty - 12*Math.sin(ang+0.4));
-            ctx.fillStyle = ctx.strokeStyle; ctx.fill();
-
+            const arrowX = s2.x - s2.r * Math.cos(ang), arrowY = s2.y - s2.r * Math.sin(ang);
+            ctx.beginPath();
+            ctx.moveTo(arrowX, arrowY);
+            ctx.lineTo(arrowX - 12 * Math.cos(ang - 0.4), arrowY - 12 * Math.sin(ang - 0.4));
+            ctx.lineTo(arrowX - 12 * Math.cos(ang + 0.4), arrowY - 12 * Math.sin(ang + 0.4));
+            ctx.closePath(); ctx.fillStyle = ctx.strokeStyle; ctx.fill();
             if (selected === l) {
-                ctx.fillStyle = "white"; ctx.strokeStyle = "black";
+                ctx.fillStyle = "white"; ctx.strokeStyle = "black"; ctx.lineWidth = 1;
                 ctx.fillRect(l.cp.x - 5, l.cp.y - 5, 10, 10); ctx.strokeRect(l.cp.x - 5, l.cp.y - 5, 10, 10);
             }
             const mid = getBezierPoint(0.5, s1, l.cp, s2);
-            ctx.fillStyle = "#333"; ctx.font = "bold 12px Arial"; ctx.textAlign="center";
-            ctx.fillText(l.val, mid.x, mid.y - 10);
+            ctx.fillStyle = "#333"; ctx.font = "bold 12px Arial"; ctx.textAlign = "center";
+            ctx.fillText(l.val, mid.x, mid.y - 12);
         });
-
-        if (connecting) {
-            ctx.beginPath(); ctx.moveTo(connecting.x, connecting.y); ctx.lineTo(mouse.x, mouse.y);
-            ctx.setLineDash([5, 5]); ctx.strokeStyle = "#999"; ctx.stroke(); ctx.setLineDash([]);
-        }
-
+        if(connecting) { ctx.beginPath(); ctx.moveTo(connecting.x, connecting.y); ctx.lineTo(mouse.x, mouse.y); ctx.strokeStyle = "#3498db"; ctx.stroke(); }
         states.forEach(s => {
             ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
             ctx.fillStyle = COLORS[s.status]; ctx.fill();
-            ctx.strokeStyle = (selected === s) ? '#e67e22' : '#2c3e50'; ctx.lineWidth = (selected === s) ? 4 : 2; ctx.stroke();
-            ctx.fillStyle = '#2c3e50'; ctx.textAlign = 'center';
-            ctx.font = 'bold 12px Arial'; ctx.fillText(s.value, s.x, s.y);
-            ctx.font = '10px Arial'; ctx.fillText(`ID:${s.id}`, s.x, s.y + 15);
+            ctx.strokeStyle = selected===s ? '#e67e22' : '#333'; ctx.lineWidth = selected===s ? 4 : 1; ctx.stroke();
+            ctx.fillStyle = "#000";
+            ctx.textAlign = "center";
+            ctx.font = "bold 12px Arial";
+            ctx.fillText(s.value, s.x, s.y - 2); 
+            ctx.font = "10px Arial";
+            ctx.fillText("ID: " + s.id, s.x, s.y + 12); 
         });
         requestAnimationFrame(renderLoop);
     }
+
+    canvas.oncontextmenu = e => e.preventDefault();
     init();
 </script>
 </body>
