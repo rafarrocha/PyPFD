@@ -104,7 +104,7 @@
         try {
             document.getElementById('python-output').innerText = "Python: Carregando Motor...";
             pyodide = await loadPyodide();
-            await pyodide.loadPackage("micropip");
+            await pyodide.loadPackage(["micropip","matplotlib"]);
             const micropip = pyodide.pyimport("micropip");
             document.getElementById('python-output').innerText = "Python: Instalando PyPFD...";
             //await micropip.install('PyPFD');
@@ -294,17 +294,24 @@
             return l ? String(l.val).trim() : "0";
         }));
         const state_v = sorted.map(s=>(s.status==='Failure'?0:1));
+        const names_v = sorted.map(s => s.value);
         
         pyodide.globals.set("js_matrix_raw", matrixData);
         pyodide.globals.set("js_rates_vars", variables.rates);
         pyodide.globals.set("js_test_vars", variables.testes);
         pyodide.globals.set("js_state_vector", state_v);
+        pyodide.globals.set("js_state_names",names_v);
 
         const pythonCode = `
 import logging
 import re
-
+import matplotlib.pyplot as plt
+import io
+import base64
+import numpy as np
 from PyPFD import PyPFDMarkov
+
+
 
 def solve_matrix():
     try:
@@ -312,6 +319,7 @@ def solve_matrix():
         py_rates = js_rates_vars.to_py()
         py_tests = js_test_vars.to_py()
         py_state_v = js_state_vector.to_py()
+        py_names = js_state_names.to_py()
 
         py_rates = sorted(py_rates, key=lambda x: len(x['n']), reverse=True)
         py_tests = sorted(py_tests, key=lambda x: len(x['n']), reverse=True)
@@ -325,9 +333,10 @@ def solve_matrix():
         print(py_tests)
         print(type(py_state_v))
         print(py_state_v)
+        print(py_names)
         print("------ Fim    - Dados de entrada")
 
-        contexto = {item['n']: item['v'] for item in py_rates} | {item['n']: 0 for item in py_tests}
+        contexto = {item['n']: item['v'] for item in py_rates} | {item['n']: 0.0 for item in py_tests}
 
         mkv_matrix = []
         for linha in py_matrix:
@@ -335,7 +344,7 @@ def solve_matrix():
             for formula in linha:
                 # eval(expressao, globais, locais)
                 # Passamos o 'contexto' como as variáveis locais disponíveis para a fórmula
-                resultado = eval(formula, {}, contexto)
+                resultado = float(eval(formula, {}, contexto))
                 nova_linha.append(resultado)
             mkv_matrix.append(nova_linha)
 
@@ -375,35 +384,157 @@ def solve_matrix():
 
 
 
-        print("------ Inicio - Mkv_Matrix")
-        print(mkv_matrix)
+        #print("------ Inicio - Mkv_Matrix")
+        #print(mkv_matrix)
         #for linha in mkv_matrix:
         #    print(linha)
-        print("------ Fim    - Mkv_Matrix")
+        #print("------ Fim    - Mkv_Matrix")
 
-        print("------ Inicio - Tst_Matrix")
-        print(tst_matrix)
+        #print("------ Inicio - Tst_Matrix")
+        #print(tst_matrix)
         #for linha in tst_matrix:
         #    #print("T:")
         #    print(linha)
-        print("------ Fim    - Tst_Matrix")
+        #print("------ Fim    - Tst_Matrix")
 
-        print("------ Inicio - Tst_Vector")
-        print(tst_v)
-        print("------ Fim    - Tst_Matrix")
+        #print("------ Inicio - Tst_Vector")
+        #print(tst_v)
+        #print("------ Fim    - Tst_Matrix")
         
-        pfd_avg = PyPFDMarkov.markov_cal_Ntest(mkv_matrix,py_state_v,tst_matrix,tst_v)
+
+        for s in py_state_v:
+            print(s)
+
+
+        intervalos = 200
+        maxT = 0
+
+        for tmp in tst_v:
+            if tmp > maxT:
+                maxT = tmp
+
+        pfd_avg = PyPFDMarkov.markov_cal_Ntest_plot(mkv_matrix,py_state_v,tst_matrix,tst_v,intervalos)
+        
         mkv_pfd_avg = pfd_avg["pfdavg"]
-        return f"{mkv_pfd_avg:.2e}"
+        mkv_pltm = pfd_avg["stateMatrix"]
+        tempos = pfd_avg["tempo"]
+
+
+        print("---- Inicio geração do gráfico")
+
+        # --- GERAÇÃO DO GRÁFICO ---        
+        
+        print("Tempo maximo:")
+  
+        # Cores baseadas no status (1 = OK, 0 = Falha)d
+        cores = ['#90EE90' if s > 0.5 else '#FFCC99' for s in py_state_v]
+   
+        plt.figure(figsize=(12, 8))
+
+
+        markers = ['.',",",'o',"1","2","3","4",'.',",",'o',"1","2","3","4",'.',",",'o',"1","2","3","4"]
+
+        for i in range(len(py_state_v)):
+            if py_state_v[i] == 0:
+                vetor_coluna = [linha[i] for linha in mkv_pltm]
+                probabilidade = vetor_coluna
+                plt.plot(tempos, probabilidade, cores[i], marker=markers[i], markevery=50, linestyle='-', label=py_names[i])
+            
+        # Criao gráfico garantindo que os eixos coincidam
+        
+        
+        
+        # 3. Customização
+        plt.title("Probabilidade de Falha Acumulada")
+        plt.xlabel("Tempo (horas)")
+        plt.ylabel("Probabilidade")
+        plt.grid(True, linestyle='--', alpha=0.7)
+        plt.legend()
+
+        print("--2")
+        # Converte para Base64
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png', bbox_inches='tight')
+        buf.seek(0)
+        img_str = base64.b64encode(buf.read()).decode('utf-8')
+        plt.close() # Limpa a memória do Matplotlib
+
+
+        # Retorna um dicionário formatado como string para o JS
+        import json
+        return json.dumps({
+            "pfd": f"{mkv_pfd_avg:.2e}",
+            "grafico": f"data:image/png;base64,{img_str}"
+        })
+
+
+
+        
+        #return f"{mkv_pfd_avg:.2e}"
 
     except Exception as e: return f"Erro Python: {str(e)}"
 solve_matrix()`;
-        try {
-            document.getElementById('python-output').innerHTML = "Calculando"  
-            const result = await pyodide.runPythonAsync(pythonCode);
-            document.getElementById('python-output').innerHTML = String(result).startsWith("Erro") ? `<span style="color:red">${result}</span>` : `PFDavg: ${result}`;
-        } catch (err) { console.error(err); }
+    try {
+        document.getElementById('python-output').innerHTML = "Calculando...";
+        const rawResult = await pyodide.runPythonAsync(pythonCode);
+        
+        if (rawResult.startsWith("Erro")) {
+            document.getElementById('python-output').innerHTML = `<span style="color:red">${rawResult}</span>`;
+            return;
+        }
+
+        const data = JSON.parse(rawResult);
+        document.getElementById('python-output').innerHTML = `PFDavg: ${data.pfd}`;
+        
+        // Abre a nova janela com o gráfico
+        abrirJanelaGrafico(data.grafico, data.pfd);
+
+    } catch (err) { 
+        console.error(err);
+        document.getElementById('python-output').innerHTML = "Erro na execução.";
     }
+
+    }
+
+    function abrirJanelaGrafico(base64Image, pfdValue) {
+        const win = window.open("", "_blank", "width=700,height=600");
+        win.document.write(`
+            <html>
+                <head>
+                    <title>Resultado Markov - PyPFD</title>
+                    <style>
+                        body { font-family: sans-serif; text-align: center; padding: 20px; background: #f4f7f6; }
+                        .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: inline-block; }
+                        h2 { color: #2c3e50; }
+                        .res { font-size: 20px; color: #e67e22; font-weight: bold; margin: 10px 0; }
+                        img { max-width: 100%; border: 1px solid #ddd; border-radius: 5px; }
+                        .signature {
+                        position: fixed;
+                        bottom: 10px;
+                        left: 10px;
+                        font-size: 10px;
+                        color: #7f8c8d;
+                        font-style: italic;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="card">
+                        <h2>Análise de no Tempo</h2>
+                        <p class="res">PFDavg: ${pfdValue}</p>
+                        <img src="${base64Image}" />
+                        <br><br>
+                        <button onclick="window.print()">Imprimir Relatório</button>
+                    </div>
+                    <div class="signature">by Rafael Rocha</div>
+                </body>
+            </html>
+        `);
+    }
+
+
+
+
 
     function renderLoop() {
         ctx.clearRect(0,0,canvas.width,canvas.height);
