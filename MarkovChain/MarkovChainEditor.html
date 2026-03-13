@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>State Logic Modeler Pro - Pyodide Final Fix</title>
+    <title>PFD calculator by Rafael Rocha</title>
     <script src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"></script>
     <style>
         :root {
@@ -1296,7 +1296,7 @@ def calPFD():
             elif (M==2) and (N==3):
                 pfd_N2595 = PyPFDN2595Avg.pfd_N2595_avg_2oo3_1pt(λ_du,λ_dd,β,βd,MT_month,T1_month,PTC,MTTR)
             else:
-                pfd_N2595 = "Erro, não possui teste parcial para a votação desejada"
+                pfd_N2595 = "Erro: N2595 não possui essa combinação"
 
 
 
