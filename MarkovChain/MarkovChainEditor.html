@@ -9,35 +9,248 @@
             --normal: #90EE90; --degraded: #ADD8E6; --failure: #FFCC99;
             --dark: #2c3e50; --accent: #3498db; --bg: #f4f7f6; --sidebar: #ecf0f1;
         }
+        * { box-sizing: border-box; }
         body { font-family: 'Segoe UI', sans-serif; margin: 0; overflow: hidden; background: var(--bg); display: flex; flex-direction: column; height: 100vh; }
-        #header { background: var(--dark); color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; z-index: 100; }
+
+        /* HEADER */
+        #header {
+            background: var(--dark); color: white;
+            padding: 6px 12px;
+            display: flex; justify-content: space-between; align-items: center;
+            z-index: 100; flex-shrink: 0; flex-wrap: wrap; gap: 6px;
+            min-height: 44px;
+        }
+        #header .title { font-weight: bold; font-size: clamp(11px, 1.5vw, 15px); white-space: nowrap; }
+        #header .controls { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+
+        /* ZOOM CONTROLS */
+        #zoom-controls {
+            position: absolute; top: 10px; left: 10px; z-index: 200;
+            display: flex; flex-direction: column; gap: 4px;
+        }
+        .zoom-btn {
+            width: 32px; height: 32px; border-radius: 6px;
+            background: white; border: 1px solid #bdc3c7;
+            font-size: 18px; line-height: 1; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+            color: var(--dark); font-weight: bold;
+            transition: background 0.15s;
+        }
+        .zoom-btn:hover { background: var(--accent); color: white; border-color: var(--accent); }
+        #zoom-label {
+            background: white; border: 1px solid #bdc3c7; border-radius: 6px;
+            font-size: 11px; text-align: center; padding: 2px 4px;
+            color: var(--dark); font-weight: bold; min-width: 32px;
+        }
+
+        /* SIDEBAR TOGGLE */
+        #sidebar-toggle {
+            position: absolute; top: 50%; left: 0; transform: translateY(-50%);
+            z-index: 300; width: 18px; height: 48px;
+            background: var(--dark); color: white; border: none; border-radius: 0 6px 6px 0;
+            cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center;
+            box-shadow: 2px 0 6px rgba(0,0,0,0.15); transition: background 0.15s;
+        }
+        #sidebar-toggle:hover { background: var(--accent); }
+
+        /* MAIN CONTAINER */
         #main-container { display: flex; flex: 1; position: relative; overflow: hidden; }
-        #sidebar-vars { width: 300px; background: var(--sidebar); border-right: 2px solid #bdc3c7; padding: 15px; overflow-y: auto; }
-        .var-table { width: 100%; margin-bottom: 20px; background: white; border-collapse: collapse; font-size: 12px; }
-        .var-table th, .var-table td { border: 1px solid #ddd; padding: 6px; }
-        .add-btn { background: var(--accent); color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; width: 100%; margin-bottom: 10px; }
-        #canvas-container { flex: 1; position: relative; background: white; }
+        #sidebar-vars {
+            width: 260px; min-width: 180px; max-width: 340px;
+            background: var(--sidebar); border-right: 2px solid #bdc3c7;
+            padding: 12px; overflow-y: auto; flex-shrink: 0;
+            transition: width 0.25s, padding 0.25s, min-width 0.25s;
+            position: relative;
+        }
+        #sidebar-vars.collapsed { width: 0 !important; min-width: 0 !important; padding: 0 !important; overflow: hidden; border-right: none; }
+        #sidebar-vars h4 { margin: 0 0 6px 0; font-size: 13px; }
+
+        /* RESIZE HANDLE */
+        #sidebar-resize {
+            width: 5px; background: transparent; cursor: col-resize; flex-shrink: 0;
+            transition: background 0.15s;
+        }
+        #sidebar-resize:hover, #sidebar-resize.dragging { background: var(--accent); }
+
+        /* CANVAS */
+        #canvas-container { flex: 1; position: relative; background: white; overflow: hidden; }
         canvas { display: block; cursor: crosshair; }
-        #data-hud { position: absolute; bottom: 20px; right: 20px; background: rgba(255, 255, 255, 0.98); border: 2px solid var(--dark); padding: 15px; border-radius: 8px; width: 450px; max-height: 50vh; overflow-y: auto; font-size: 11px; }
-        .matrix-table { border-collapse: collapse; width: 100%; text-align: center; margin-bottom: 15px; }
-        .matrix-table td { border: 1px solid #ccc; padding: 4px; font-family: monospace; }
-        .vector-box { background: #2c3e50; color: #2ecc71; padding: 10px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 13px; }
-        .py-result { margin-top: 10px; padding: 10px; background: #fdfce5; border: 1px solid #f1c40f; border-radius: 4px; font-weight: bold; }
-        .modal { position: absolute; background: white; border-radius: 8px; display: none; z-index: 1000; width: 240px; border: 1px solid #ccc; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+
+        /* HUD */
+        #data-hud {
+            position: absolute; bottom: 12px; right: 12px;
+            background: rgba(255,255,255,0.98); border: 2px solid var(--dark);
+            padding: 10px; border-radius: 8px;
+            width: clamp(240px, 32vw, 460px);
+            max-height: 45vh; overflow-y: auto;
+            font-size: 11px;
+            transition: max-height 0.25s, padding 0.25s;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        }
+        #data-hud.collapsed { max-height: 34px; overflow: hidden; padding-bottom: 4px; }
+        #hud-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 6px; cursor: pointer; user-select: none;
+        }
+        #hud-header h4 { margin: 0; font-size: 12px; }
+        #hud-toggle-btn {
+            background: none; border: 1px solid #bdc3c7; border-radius: 4px;
+            font-size: 14px; cursor: pointer; width: 22px; height: 22px;
+            display: flex; align-items: center; justify-content: center;
+            color: var(--dark); line-height: 1;
+        }
+
+        /* TABLES */
+        .var-table { width: 100%; margin-bottom: 12px; background: white; border-collapse: collapse; font-size: 11px; }
+        .var-table th, .var-table td { border: 1px solid #ddd; padding: 4px 5px; }
+        .var-table input { width: 100%; border: none; font-size: 11px; padding: 0; }
+        .add-btn { background: var(--accent); color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; width: 100%; margin-bottom: 8px; font-size: 12px; }
+
+        .matrix-table { border-collapse: collapse; width: 100%; text-align: center; margin-bottom: 12px; }
+        .matrix-table td { border: 1px solid #ccc; padding: 3px; font-family: monospace; font-size: 10px; }
+        .vector-box { background: #2c3e50; color: #2ecc71; padding: 8px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 12px; word-break: break-all; }
+        .py-result { margin-top: 8px; padding: 8px; background: #fdfce5; border: 1px solid #f1c40f; border-radius: 4px; font-weight: bold; }
+
+        /* MODALS */
+        .modal { position: fixed; background: white; border-radius: 8px; display: none; z-index: 2000; width: 240px; border: 1px solid #ccc; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
         .modal label { display: block; margin-top: 10px; font-size: 11px; font-weight: bold; }
-        .modal select, .modal input { width: 100%; margin-top: 5px; padding: 5px; box-sizing: border-box; }
-        .btn-io { background: #7f8c8d; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-left: 5px; }
+        .modal select, .modal input[type=text] { width: 100%; margin-top: 5px; padding: 5px; box-sizing: border-box; }
+
+        .btn-io { background: #7f8c8d; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px; }
+
+        /* RIGHT SIDEBAR - Analytical PFD */
+        #sidebar-right {
+            width: 290px; min-width: 200px; max-width: 420px;
+            background: #f8f4ff; border-left: 2px solid #bdc3c7;
+            padding: 14px 12px; overflow-y: auto; flex-shrink: 0;
+            transition: width 0.25s, padding 0.25s, min-width 0.25s;
+            position: relative;
+        }
+        #sidebar-right.collapsed { width: 0 !important; min-width: 0 !important; padding: 0 !important; overflow: hidden; border-left: none; }
+        #sidebar-right h4 { margin: 0 0 10px 0; font-size: 13px; color: #6c3483; }
+
+        #sidebar-right-resize {
+            width: 5px; background: transparent; cursor: col-resize; flex-shrink: 0;
+            transition: background 0.15s;
+        }
+        #sidebar-right-resize:hover, #sidebar-right-resize.dragging { background: #9b59b6; }
+
+        #sidebar-right-toggle {
+            position: relative;
+            flex-shrink: 0;
+            align-self: center;
+            z-index: 300; width: 18px; height: 48px;
+            background: #6c3483; color: white; border: none; border-radius: 6px 0 0 6px;
+            cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center;
+            box-shadow: -2px 0 6px rgba(0,0,0,0.15); transition: background 0.15s;
+        }
+        #sidebar-right-toggle:hover { background: #9b59b6; }
+
+        /* Analytical vars table */
+        .anal-var-row {
+            display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+            gap: 6px; margin-bottom: 7px;
+        }
+        .anal-var-row label {
+            font-size: 12px; font-weight: bold; color: #4a235a;
+            white-space: nowrap;
+        }
+        .anal-var-row .unit {
+            font-size: 10px; color: #7f8c8d; text-align: center;
+        }
+        .anal-var-row input[type=number] {
+            width: 100%; padding: 4px 5px; border: 1px solid #c39bd3;
+            border-radius: 4px; font-size: 12px; background: white;
+            text-align: right;
+        }
+        .anal-var-row input[type=number]:focus { outline: none; border-color: #9b59b6; }
+
+        .anal-section { margin-bottom: 14px; }
+        .anal-section-title {
+            font-size: 10px; font-weight: bold; text-transform: uppercase;
+            letter-spacing: 0.5px; color: #7d3c98; border-bottom: 1px solid #d7bde2;
+            padding-bottom: 4px; margin-bottom: 8px;
+        }
+
+        .anal-result-box {
+            background: linear-gradient(135deg, #4a235a, #6c3483);
+            color: white; border-radius: 8px; padding: 12px 14px;
+            margin-top: 12px; font-family: 'Courier New', monospace;
+        }
+        .anal-result-box .res-label { font-size: 10px; opacity: 0.8; margin-bottom: 2px; }
+        .anal-result-box .res-value { font-size: 20px; font-weight: bold; letter-spacing: 1px; }
+        .anal-result-box .res-sub { font-size: 10px; opacity: 0.7; margin-top: 4px; }
+
+        .anal-result-detail {
+            background: #f3e5f5; border: 1px solid #ce93d8; border-radius: 6px;
+            padding: 8px 10px; margin-top: 8px; font-size: 11px;
+        }
+        .anal-result-detail table { width: 100%; border-collapse: collapse; }
+        .anal-result-detail td { padding: 2px 4px; }
+        .anal-result-detail td:last-child { text-align: right; font-family: monospace; font-weight: bold; color: #6c3483; }
+
+        .calc-btn {
+            width: 100%; background: #6c3483; color: white; border: none;
+            padding: 8px; border-radius: 6px; cursor: pointer; font-weight: bold;
+            font-size: 13px; margin-top: 10px; transition: background 0.15s;
+        }
+        .calc-btn:hover { background: #9b59b6; }
+
+        .formula-hint {
+            font-size: 9px; color: #7f8c8d; font-style: italic;
+            margin-top: 6px; line-height: 1.4;
+        }
+
+        /* Partial test checkbox row */
+        .partial-test-row {
+            display: flex; align-items: center; gap: 8px;
+            margin: 10px 0 4px 0; padding: 7px 10px;
+            background: #ede7f6; border: 1px solid #ce93d8;
+            border-radius: 6px; cursor: pointer;
+        }
+        .partial-test-row input[type=checkbox] {
+            accent-color: #6c3483; width: 15px; height: 15px;
+            cursor: pointer; flex-shrink: 0;
+        }
+        .partial-test-row label {
+            font-size: 12px; font-weight: bold; color: #4a235a;
+            cursor: pointer; user-select: none;
+        }
+        #partial-test-fields {
+            overflow: hidden;
+            max-height: 0;
+            opacity: 0;
+            transition: max-height 0.3s ease, opacity 0.3s ease, margin 0.3s ease;
+            margin-top: 0;
+        }
+        #partial-test-fields.visible {
+            max-height: 120px;
+            opacity: 1;
+            margin-top: 4px;
+        }
+
+        /* RESPONSIVE: small screens */
+        @media (max-width: 640px) {
+            #sidebar-vars { width: 0; min-width: 0; padding: 0; overflow: hidden; border-right: none; }
+            #sidebar-right { width: 0; min-width: 0; padding: 0; overflow: hidden; border-left: none; }
+            #data-hud { width: calc(100vw - 24px); right: 12px; left: 12px; }
+        }
     </style>
 </head>
 <body>
 
 <div id="header">
-    <div style="font-weight:bold">Markov Solver for PFD by Rafael Rocha</div>
+    <div class="title">Markov Solver for PFD by Rafael Rocha</div>
     <div class="controls">
-        <button class="btn-io" onclick="saveProject()">Salvar Projeto</button>
-        <button class="btn-io" onclick="document.getElementById('fileInput').click()">Carregar Projeto</button>
+        <input type="text" id="projectTitle" placeholder="Título do Projeto" value="Sem título"
+            style="padding:5px 8px; border-radius:4px; border:1px solid #7f8c8d; background:#3d5166; color:white;
+                   font-size:12px; min-width:160px; max-width:240px; outline:none;"
+            title="Título do Projeto">
+        <button class="btn-io" onclick="saveProject()">💾 Salvar</button>
+        <button class="btn-io" onclick="document.getElementById('fileInput').click()">📂 Carregar</button>
         <input type="file" id="fileInput" style="display:none" onchange="loadProject(event)">
-        <button style="background:#e67e22; color:white; border:none; padding:8px 15px; border-radius:4px; cursor:pointer; font-weight:bold; margin-left:10px;" onclick="runPythonCalculation()">Calcular PFDavg (PyPFD)</button>
+        <button style="background:#e67e22; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer; font-weight:bold; font-size:12px;" onclick="runPythonMkvCalculation()">⚙️ Calcular Markov</button>
     </div>
 </div>
 
@@ -58,16 +271,127 @@
         <button class="add-btn" onclick="addVariable('testes')">+ Add Teste</button>
         <p style="font-size: 10px; color: #7f8c8d; margin-top: 20px;">* Clique em um item e aperte <b>DEL</b> para remover.</p>
     </div>
+    <div id="sidebar-resize"></div>
+    <button id="sidebar-toggle" onclick="toggleSidebar()" title="Mostrar/Ocultar painel">◀</button>
 
     <div id="canvas-container">
-        <canvas id="mainCanvas"></canvas>
-        <div id="data-hud">
-            <h4>Matriz Simbólica</h4>
-            <div id="matrix-ui"></div>
-            <h4>Vetor de Estados</h4>
-            <div id="status-vector-ui" class="vector-box">[]</div>
-            <div id="python-output" class="py-result">Python: Inicializando...</div>
+        <!-- Zoom controls -->
+        <div id="zoom-controls">
+            <button class="zoom-btn" onclick="applyZoom(0.2)" title="Aproximar">+</button>
+            <div id="zoom-label">100%</div>
+            <button class="zoom-btn" onclick="applyZoom(-0.2)" title="Afastar">−</button>
+            <button class="zoom-btn" onclick="resetView()" title="Resetar vista" style="font-size:13px">⌂</button>
         </div>
+
+        <canvas id="mainCanvas"></canvas>
+
+        <div id="data-hud">
+            <div id="hud-header" onclick="toggleHUD()">
+                <h4>📊 Matriz Simbólica</h4>
+                <button id="hud-toggle-btn" title="Minimizar/Expandir">▼</button>
+            </div>
+            <div id="hud-body">
+                <div id="matrix-ui"></div>
+                <h4 style="margin:8px 0 4px">Vetor de Estados</h4>
+                <div id="status-vector-ui" class="vector-box">[]</div>
+                <div id="python-output" class="py-result">Python: Inicializando...</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="sidebar-right-resize"></div>
+    <button id="sidebar-right-toggle" onclick="toggleRightSidebar()" title="Mostrar/Ocultar Cálculo Analítico">▶</button>
+    <div id="sidebar-right">
+
+        <h4>🧮 PFD Analítico</h4>
+
+        <div class="anal-section">
+            <div class="anal-section-title">Taxas de Falha</div>
+            <div class="anal-var-row">
+                <label>λ<sub>du</sub></label>
+                <span class="unit">h⁻¹</span>
+                <input type="number" id="an_ldu" value="1e-5" step="any">
+            </div>
+            <div class="anal-var-row">
+                <label>λ<sub>dd</sub></label>
+                <span class="unit">h⁻¹</span>
+                <input type="number" id="an_ldd" value="3e-4" step="any">
+            </div>
+        </div>
+
+        <div class="anal-section">
+            <div class="anal-section-title">Tempos</div>
+            <div class="anal-var-row">
+                <label>TI</label>
+                <span class="unit">h</span>
+                <input type="number" id="an_TI" value="8760" step="any" min="0">
+            </div>
+            <div class="anal-var-row">
+                <label>MTTR</label>
+                <span class="unit">h</span>
+                <input type="number" id="an_MTTR" value="40" step="any" min="0">
+            </div>
+        </div>
+
+        <div class="partial-test-row" onclick="togglePartialTest()">
+            <input type="checkbox" id="chk_partial_test" onchange="togglePartialTest()" onclick="event.stopPropagation()">
+            <label for="chk_partial_test">Considerar teste parcial?</label>
+        </div>
+        <div id="partial-test-fields">
+            <div class="anal-var-row">
+                <label>MT</label>
+                <span class="unit">h</span>
+                <input type="number" id="an_MT" value="87600" step="any" min="0">
+            </div>
+            <div class="anal-var-row">
+                <label>PTC</label>
+                <span class="unit">%</span>
+                <input type="number" id="an_PTC" value="80" step="1" min="0" max="100">
+            </div>
+        </div>
+
+        <div class="anal-section">
+            <div class="anal-section-title">Fatores de Causa Comum (CCF)</div>
+            <div class="anal-var-row">
+                <label>β</label>
+                <span class="unit">%</span>
+                <input type="number" id="an_beta" value="10" step="1" min="0" max="100">
+            </div>
+            <div class="anal-var-row">
+                <label>β<sub>d</sub></label>
+                <span class="unit">%</span>
+                <input type="number" id="an_betad" value="10" step="1" min="0" max="100">
+            </div>
+        </div>
+
+        <div class="anal-section">
+            <div class="anal-section-title">Arquitetura MooN</div>
+            <div class="anal-var-row">
+                <label>M (votos)</label>
+                <span class="unit">—</span>
+                <input type="number" id="an_M" value="1" step="1" min="1" max="9">
+            </div>
+            <div class="anal-var-row">
+                <label>N (canais)</label>
+                <span class="unit">—</span>
+                <input type="number" id="an_N" value="1" step="1" min="1" max="9">
+            </div>
+        </div>
+
+        <button class="calc-btn" onclick="calcAnalytical()">▶ Calcular PFD Analítico</button>
+
+        <div id="anal-result" style="display:none">
+            <div class="anal-result-box">
+                <div class="res-label">PFD<sub>avg</sub></div>
+                <div class="res-value" id="anal-pfd_rbd-val">—</div>
+                <div class="res-sub" id="anal-pfd_rbd_sub-val">—</div>
+            </div>
+            <div class="anal-result-detail">
+                <table id="anal-detail-table"></table>
+            </div>
+        </div>
+
+        <div class="formula-hint" id="anal-formula-hint"></div>
     </div>
 </div>
 
@@ -99,6 +423,76 @@
     let selected = null, dragging = null, connecting = null, dragCP = null, mouse = {x:0, y:0};
     const COLORS = { Normal: '#90EE90', Degraded: '#ADD8E6', Failure: '#FFCC99' };
 
+    // --- Pan & Zoom State ---
+    let viewX = 0, viewY = 0, viewScale = 1;
+    let isPanning = false, panStart = {x:0, y:0}, panViewStart = {x:0,y:0};
+
+    function screenToWorld(sx, sy) {
+        return { x: (sx - viewX) / viewScale, y: (sy - viewY) / viewScale };
+    }
+    function worldToScreen(wx, wy) {
+        return { x: wx * viewScale + viewX, y: wy * viewScale + viewY };
+    }
+
+    function applyZoom(delta) {
+        const cx = canvas.width / 2, cy = canvas.height / 2;
+        const newScale = Math.max(0.15, Math.min(5, viewScale + delta));
+        viewX = cx - (cx - viewX) * (newScale / viewScale);
+        viewY = cy - (cy - viewY) * (newScale / viewScale);
+        viewScale = newScale;
+        updateZoomLabel();
+    }
+    function resetView() {
+        viewX = 0; viewY = 0; viewScale = 1;
+        updateZoomLabel();
+    }
+    function updateZoomLabel() {
+        document.getElementById('zoom-label').textContent = Math.round(viewScale * 100) + '%';
+    }
+
+    // --- Sidebar toggle & resize ---
+    let sidebarCollapsed = false;
+    function toggleSidebar() {
+        sidebarCollapsed = !sidebarCollapsed;
+        const sb = document.getElementById('sidebar-vars');
+        const btn = document.getElementById('sidebar-toggle');
+        const resizer = document.getElementById('sidebar-resize');
+        sb.classList.toggle('collapsed', sidebarCollapsed);
+        btn.textContent = sidebarCollapsed ? '▶' : '◀';
+        resizer.style.display = sidebarCollapsed ? 'none' : '';
+        setTimeout(resizeCanvas, 300);
+    }
+
+    // Sidebar drag-resize
+    (() => {
+        const resizer = document.getElementById('sidebar-resize');
+        const sidebar = document.getElementById('sidebar-vars');
+        let isResizing = false, startX = 0, startW = 0;
+        resizer.addEventListener('mousedown', e => {
+            isResizing = true; startX = e.clientX; startW = sidebar.offsetWidth;
+            resizer.classList.add('dragging');
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+        });
+        document.addEventListener('mousemove', e => {
+            if (!isResizing) return;
+            const newW = Math.max(150, Math.min(450, startW + (e.clientX - startX)));
+            sidebar.style.width = newW + 'px';
+            resizeCanvas();
+        });
+        document.addEventListener('mouseup', () => {
+            if (isResizing) { isResizing = false; resizer.classList.remove('dragging'); document.body.style.cursor = ''; document.body.style.userSelect = ''; }
+        });
+    })();
+
+    // --- HUD toggle ---
+    function toggleHUD() {
+        const hud = document.getElementById('data-hud');
+        const btn = document.getElementById('hud-toggle-btn');
+        hud.classList.toggle('collapsed');
+        btn.textContent = hud.classList.contains('collapsed') ? '▲' : '▼';
+    }
+
     let pyodide;
     async function loadPy() { 
         try {
@@ -107,7 +501,6 @@
             await pyodide.loadPackage(["micropip","matplotlib"]);
             const micropip = pyodide.pyimport("micropip");
             document.getElementById('python-output').innerText = "Python: Instalando PyPFD...";
-            //await micropip.install('PyPFD');
             await micropip.install('PyPFD');
             document.getElementById('python-output').innerText = "Python: Pronto (PyPFD Carregado)";
         } catch(e) { 
@@ -117,25 +510,66 @@
     }
     loadPy();
 
-    function init() {
-        window.addEventListener('resize', () => { 
-            canvas.width = document.getElementById('canvas-container').clientWidth;
-            canvas.height = document.getElementById('canvas-container').clientHeight;
-        });
-        window.dispatchEvent(new Event('resize'));
+    function resizeCanvas() {
+        const container = document.getElementById('canvas-container');
+        canvas.width = container.clientWidth;
+        canvas.height = container.clientHeight;
+    }
 
-        // Atalho para Deletar
+    function init() {
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Mouse wheel zoom
+        canvas.addEventListener('wheel', e => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+            const delta = e.deltaY < 0 ? 0.1 : -0.1;
+            const newScale = Math.max(0.15, Math.min(5, viewScale + delta));
+            viewX = mx - (mx - viewX) * (newScale / viewScale);
+            viewY = my - (my - viewY) * (newScale / viewScale);
+            viewScale = newScale;
+            updateZoomLabel();
+        }, { passive: false });
+
+        // Touch pinch-zoom
+        let lastTouchDist = null;
+        canvas.addEventListener('touchstart', e => {
+            if (e.touches.length === 2) {
+                lastTouchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+            }
+        }, { passive: true });
+        canvas.addEventListener('touchmove', e => {
+            if (e.touches.length === 2) {
+                const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                if (lastTouchDist) {
+                    const delta = (dist - lastTouchDist) * 0.005;
+                    applyZoom(delta);
+                }
+                lastTouchDist = dist;
+            }
+        }, { passive: true });
+        canvas.addEventListener('touchend', () => { lastTouchDist = null; });
+
+        // Keyboard shortcuts
         window.addEventListener('keydown', e => {
-            if((e.key === "Delete") && selected) {
-                if(selected.uid) { // É um estado
+            if (e.key === "Delete" && selected) {
+                if (selected.uid) {
                     links = links.filter(l => l.from !== selected.uid && l.to !== selected.uid);
                     states = states.filter(s => s !== selected);
-                } else { // É um link
+                } else {
                     links = links.filter(l => l !== selected);
                 }
                 selected = null;
                 updateDataViews();
             }
+            // Keyboard pan
+            const PAN = 30;
+            if (e.key === 'ArrowLeft')  viewX += PAN;
+            if (e.key === 'ArrowRight') viewX -= PAN;
+            if (e.key === 'ArrowUp')    viewY += PAN;
+            if (e.key === 'ArrowDown')  viewY -= PAN;
         });
 
         renderVariables();
@@ -145,13 +579,46 @@
 
     // --- Funções de IO ---
     function saveProject() {
-        const data = JSON.stringify({ states, links, variables }, null, 2);
+        const title = document.getElementById('projectTitle').value || 'Sem título';
+
+        const partialTestChecked = document.getElementById('chk_partial_test').checked;
+
+        const analytical = {
+            ldu:              document.getElementById('an_ldu').value,
+            ldd:              document.getElementById('an_ldd').value,
+            TI:               document.getElementById('an_TI').value,
+            MTTR:             document.getElementById('an_MTTR').value,
+            beta:             document.getElementById('an_beta').value,
+            betad:            document.getElementById('an_betad').value,
+            M:                document.getElementById('an_M').value,
+            N:                document.getElementById('an_N').value,
+            MT:               document.getElementById('an_MT').value,
+            PTC:              document.getElementById('an_PTC').value,
+            partialTestEnabled: partialTestChecked,
+        };
+
+        const leftSB  = document.getElementById('sidebar-vars');
+        const rightSB = document.getElementById('sidebar-right');
+
+        const view = { x: viewX, y: viewY, scale: viewScale };
+
+        const ui = {
+            leftSidebarCollapsed:  leftSB.classList.contains('collapsed'),
+            rightSidebarCollapsed: rightSB.classList.contains('collapsed'),
+            hudCollapsed:          document.getElementById('data-hud').classList.contains('collapsed'),
+            leftSidebarWidth:      leftSB.classList.contains('collapsed')  ? null : leftSB.offsetWidth,
+            rightSidebarWidth:     rightSB.classList.contains('collapsed') ? null : rightSB.offsetWidth,
+        };
+
+        const data = JSON.stringify({ title, states, links, variables, analytical, view, ui }, null, 2);
         const blob = new Blob([data], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'markov_model.json';
+        const safeName = title.replace(/[^a-zA-Z0-9_\-\s]/g, '').trim().replace(/\s+/g, '_') || 'markov_model';
+        a.download = safeName + '.json';
         a.click();
+        URL.revokeObjectURL(url);
     }
 
     function loadProject(event) {
@@ -159,13 +626,76 @@
         if (!file) return;
         const reader = new FileReader();
         reader.onload = e => {
-            const content = JSON.parse(e.target.result);
-            states = content.states || [];
-            links = content.links || [];
+            let content;
+            try { content = JSON.parse(e.target.result); }
+            catch { alert('Arquivo inválido ou corrompido.'); return; }
+
+            states    = content.states    || [];
+            links     = content.links     || [];
             variables = content.variables || { rates: [], testes: [] };
+
+            document.getElementById('projectTitle').value = content.title || 'Sem título';
+
+            if (content.analytical) {
+                const a = content.analytical;
+                if (a.ldu   !== undefined) document.getElementById('an_ldu').value   = a.ldu;
+                if (a.ldd   !== undefined) document.getElementById('an_ldd').value   = a.ldd;
+                if (a.TI    !== undefined) document.getElementById('an_TI').value    = a.TI;
+                if (a.MTTR  !== undefined) document.getElementById('an_MTTR').value  = a.MTTR;
+                if (a.beta  !== undefined) document.getElementById('an_beta').value  = a.beta;
+                if (a.betad !== undefined) document.getElementById('an_betad').value = a.betad;
+                if (a.M     !== undefined) document.getElementById('an_M').value     = a.M;
+                if (a.N     !== undefined) document.getElementById('an_N').value     = a.N;
+                if (a.MT    !== undefined) document.getElementById('an_MT').value    = a.MT;
+                if (a.PTC   !== undefined) document.getElementById('an_PTC').value   = a.PTC;
+
+                // Restore partial test checkbox and panel visibility
+                const chk = document.getElementById('chk_partial_test');
+                const ptFields = document.getElementById('partial-test-fields');
+                const enabled = !!a.partialTestEnabled;
+                chk.checked = enabled;
+                ptFields.classList.toggle('visible', enabled);
+            }
+
+            if (content.view) {
+                viewX     = content.view.x     ?? 0;
+                viewY     = content.view.y     ?? 0;
+                viewScale = content.view.scale ?? 1;
+                document.getElementById('zoom-label').textContent = Math.round(viewScale * 100) + '%';
+            }
+
+            if (content.ui) {
+                const leftSB   = document.getElementById('sidebar-vars');
+                const rightSB  = document.getElementById('sidebar-right');
+                const hud      = document.getElementById('data-hud');
+                const leftBtn  = document.getElementById('sidebar-toggle');
+                const rightBtn = document.getElementById('sidebar-right-toggle');
+                const leftRes  = document.getElementById('sidebar-resize');
+                const rightRes = document.getElementById('sidebar-right-resize');
+
+                if (content.ui.leftSidebarCollapsed) {
+                    leftSB.classList.add('collapsed'); leftBtn.textContent = '▶'; leftRes.style.display = 'none';
+                } else {
+                    leftSB.classList.remove('collapsed'); leftBtn.textContent = '◀'; leftRes.style.display = '';
+                    if (content.ui.leftSidebarWidth) leftSB.style.width = content.ui.leftSidebarWidth + 'px';
+                }
+
+                if (content.ui.rightSidebarCollapsed) {
+                    rightSB.classList.add('collapsed'); rightBtn.textContent = '◀'; rightRes.style.display = 'none';
+                } else {
+                    rightSB.classList.remove('collapsed'); rightBtn.textContent = '▶'; rightRes.style.display = '';
+                    if (content.ui.rightSidebarWidth) rightSB.style.width = content.ui.rightSidebarWidth + 'px';
+                }
+
+                hud.classList.toggle('collapsed', !!content.ui.hudCollapsed);
+                document.getElementById('hud-toggle-btn').textContent = content.ui.hudCollapsed ? '▲' : '▼';
+            }
+
             renderVariables();
             updateDataViews();
+            setTimeout(resizeCanvas, 50);
         };
+        event.target.value = '';
         reader.readAsText(file);
     }
 
@@ -189,25 +719,53 @@
         });
     }
 
+    // --- Canvas Event Helpers ---
+    function getCanvasPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+        return screenToWorld(sx, sy);
+    }
+
     canvas.addEventListener('mousedown', e => {
-        const pos = {x:e.offsetX, y:e.offsetY};
-        const cp = links.find(l => selected === l && Math.hypot(l.cp.x-pos.x, l.cp.y-pos.y) < 15);
-        if(cp) { dragCP = cp; return; }
+        const pos = getCanvasPos(e);
+        mouse = pos;
+
+        // Middle-button or space+left for pan
+        if (e.button === 1) {
+            isPanning = true; panStart = {x: e.clientX, y: e.clientY};
+            panViewStart = {x: viewX, y: viewY};
+            canvas.style.cursor = 'grab';
+            return;
+        }
+
+        const cp = links.find(l => selected === l && Math.hypot(l.cp.x-pos.x, l.cp.y-pos.y) < 15/viewScale);
+        if (cp) { dragCP = cp; return; }
         const s = states.find(s => Math.hypot(s.x-pos.x, s.y-pos.y) < s.r);
-        if(e.button === 0) { dragging = s; selected = s || getLinkHit(pos.x, pos.y); }
-        else if(e.button === 2) { connecting = s; }
+        if (e.button === 0) { dragging = s; selected = s || getLinkHit(pos.x, pos.y); }
+        else if (e.button === 2) { connecting = s ? {...s} : null; if(s) connecting = s; }
     });
 
     canvas.addEventListener('mousemove', e => {
-        mouse = {x:e.offsetX, y:e.offsetY};
-        if(dragging) { dragging.x = e.offsetX; dragging.y = e.offsetY; }
-        if(dragCP) { dragCP.cp.x = e.offsetX; dragCP.cp.y = e.offsetY; }
+        const rect = canvas.getBoundingClientRect();
+        const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+
+        if (isPanning) {
+            viewX = panViewStart.x + (e.clientX - panStart.x);
+            viewY = panViewStart.y + (e.clientY - panStart.y);
+            return;
+        }
+
+        const pos = screenToWorld(sx, sy);
+        mouse = pos;
+        if (dragging) { dragging.x = pos.x; dragging.y = pos.y; }
+        if (dragCP) { dragCP.cp.x = pos.x; dragCP.cp.y = pos.y; }
     });
 
-    window.addEventListener('mouseup', () => {
-        if(connecting) {
+    window.addEventListener('mouseup', e => {
+        if (isPanning) { isPanning = false; canvas.style.cursor = 'crosshair'; return; }
+        if (connecting) {
             const target = states.find(s => Math.hypot(s.x-mouse.x, s.y-mouse.y) < s.r);
-            if(target && target !== connecting) {
+            if (target && target !== connecting) {
                 links.push({from: connecting.uid, to: target.uid, val: "0", cp: {x:(connecting.x+target.x)/2, y:(connecting.y+target.y)/2-40}});
                 updateDataViews();
             }
@@ -216,28 +774,38 @@
     });
 
     canvas.addEventListener('dblclick', e => {
+        const pos = getCanvasPos(e);
         const id = states.length ? Math.max(...states.map(s=>s.id))+1 : 1;
-        states.push({uid: Date.now(), x:e.offsetX, y:e.offsetY, id, value: "S"+id, status:'Normal', r:30});
+        states.push({uid: Date.now(), x: pos.x, y: pos.y, id, value: "S"+id, status:'Normal', r:30});
         updateDataViews();
     });
 
     canvas.addEventListener('click', e => {
-        const pos = {x:e.offsetX, y:e.offsetY};
+        const pos = getCanvasPos(e);
         const s = states.find(s => Math.hypot(s.x-pos.x, s.y-pos.y) < s.r);
         const l = getLinkHit(pos.x, pos.y);
         document.getElementById('linkModal').style.display = 'none';
         document.getElementById('stateModal').style.display = 'none';
-        if(s) {
+        if (s) {
             selected = s;
             document.getElementById('m_s_name').value = s.value;
             document.getElementById('m_s_status').value = s.status;
             const m = document.getElementById('stateModal');
-            m.style.display = 'block'; m.style.left = e.clientX+'px'; m.style.top = e.clientY+'px';
-        } else if(l) { 
+            // Clamp modal position to viewport
+            const vw = window.innerWidth, vh = window.innerHeight;
+            const mw = 240, mh = 180;
+            m.style.display = 'block';
+            m.style.left = Math.min(e.clientX, vw - mw - 10) + 'px';
+            m.style.top  = Math.min(e.clientY, vh - mh - 10) + 'px';
+        } else if (l) { 
             selected = l;
             document.getElementById('m_l_val').value = l.val;
             const m = document.getElementById('linkModal');
-            m.style.display = 'block'; m.style.left = e.clientX+'px'; m.style.top = e.clientY+'px';
+            const vw = window.innerWidth, vh = window.innerHeight;
+            const mw = 240, mh = 120;
+            m.style.display = 'block';
+            m.style.left = Math.min(e.clientX, vw - mw - 10) + 'px';
+            m.style.top  = Math.min(e.clientY, vh - mh - 10) + 'px';
         }
     });
 
@@ -263,7 +831,7 @@
             const s1 = states.find(s=>s.uid===l.from), s2 = states.find(s=>s.uid===l.to);
             if(!s1 || !s2) return false;
             const mid = getBezierPoint(0.5, s1, l.cp, s2);
-            return Math.hypot(mid.x-x, mid.y-y) < 20;
+            return Math.hypot(mid.x-x, mid.y-y) < 20/viewScale;
         });
     }
 
@@ -286,7 +854,7 @@
         document.getElementById('status-vector-ui').innerText = `[${sorted.map(s=>(s.status==='Failure'?0:1)).join(', ')}]`;
     }
 
-    async function runPythonCalculation() {
+    async function runPythonMkvCalculation() {
         if (!pyodide) return alert("Pyodide ainda está carregando...");
         const sorted = [...states].sort((a, b) => a.id - b.id);
         const matrixData = sorted.map(r => sorted.map(c => {
@@ -324,17 +892,17 @@ def solve_matrix():
         py_rates = sorted(py_rates, key=lambda x: len(x['n']), reverse=True)
         py_tests = sorted(py_tests, key=lambda x: len(x['n']), reverse=True)
 
-        print("------ Inicio - Dados de entrada")
-        print(type(py_matrix))
-        print(py_matrix)
-        print(type(py_rates))
-        print(py_rates)
-        print(type(py_tests))
-        print(py_tests)
-        print(type(py_state_v))
-        print(py_state_v)
-        print(py_names)
-        print("------ Fim    - Dados de entrada")
+        #print("------ Inicio - Dados de entrada")
+        #print(type(py_matrix))
+        #print(py_matrix)
+        #print(type(py_rates))
+        #print(py_rates)
+        #print(type(py_tests))
+        #print(py_tests)
+        #print(type(py_state_v))
+        #print(py_state_v)
+        #print(py_names)
+        #print("------ Fim    - Dados de entrada")
 
         contexto = {item['n']: item['v'] for item in py_rates} | {item['n']: 0.0 for item in py_tests}
 
@@ -348,7 +916,7 @@ def solve_matrix():
                 nova_linha.append(resultado)
             mkv_matrix.append(nova_linha)
 
-
+ 
         linhas = len(mkv_matrix)
         colunas = len(mkv_matrix[0])
         
@@ -364,13 +932,14 @@ def solve_matrix():
         tst_matrix = []
         tst_v = []
 
+        #print("py_tests")
         #print(py_tests)
   
         for tst in py_tests:
             tstM = [[0 for j in range(colunas)] for i in range(linhas)]
             for i in range(linhas):
                 for j in range(colunas):
-                    if py_matrix[i][j] == tst['n']:
+                    if tst['n'] in py_matrix[i][j]:
                         tstM[i][j] = 1
 
             for k in range(linhas):
@@ -386,6 +955,7 @@ def solve_matrix():
 
         #print("------ Inicio - Mkv_Matrix")
         #print(mkv_matrix)
+
         #for linha in mkv_matrix:
         #    print(linha)
         #print("------ Fim    - Mkv_Matrix")
@@ -420,11 +990,11 @@ def solve_matrix():
         tempos = pfd_avg["tempo"]
 
 
-        print("---- Inicio geração do gráfico")
+        #print("---- Inicio geração do gráfico")
 
         # --- GERAÇÃO DO GRÁFICO ---        
         
-        print("Tempo maximo:")
+        #print("Tempo maximo:")
   
         # Cores baseadas no status (1 = OK, 0 = Falha)d
         cores = ['#90EE90' if s > 0.5 else '#FFCC99' for s in py_state_v]
@@ -451,7 +1021,7 @@ def solve_matrix():
         plt.grid(True, linestyle='--', alpha=0.7)
         plt.legend()
 
-        print("--2")
+        #print("--2")
         # Converte para Base64
         buf = io.BytesIO()
         plt.savefig(buf, format='png', bbox_inches='tight')
@@ -538,6 +1108,11 @@ solve_matrix()`;
 
     function renderLoop() {
         ctx.clearRect(0,0,canvas.width,canvas.height);
+
+        ctx.save();
+        ctx.translate(viewX, viewY);
+        ctx.scale(viewScale, viewScale);
+
         links.forEach(l => {
             const s1 = states.find(s => s.uid === l.from), s2 = states.find(s => s.uid === l.to);
             if (!s1 || !s2) return;
@@ -545,37 +1120,316 @@ solve_matrix()`;
             ctx.moveTo(s1.x, s1.y);
             ctx.quadraticCurveTo(l.cp.x, l.cp.y, s2.x, s2.y);
             ctx.strokeStyle = (selected === l) ? '#e67e22' : '#bdc3c7';
-            ctx.lineWidth = (selected === l) ? 3 : 2; 
+            ctx.lineWidth = (selected === l) ? 3/viewScale : 2/viewScale; 
             ctx.stroke();
             const pA = getBezierPoint(0.9, s1, l.cp, s2), pB = getBezierPoint(1.0, s1, l.cp, s2);
             const ang = Math.atan2(pB.y - pA.y, pB.x - pA.x);
             const arrowX = s2.x - s2.r * Math.cos(ang), arrowY = s2.y - s2.r * Math.sin(ang);
+            const arrowSize = 12/viewScale;
             ctx.beginPath();
             ctx.moveTo(arrowX, arrowY);
-            ctx.lineTo(arrowX - 12 * Math.cos(ang - 0.4), arrowY - 12 * Math.sin(ang - 0.4));
-            ctx.lineTo(arrowX - 12 * Math.cos(ang + 0.4), arrowY - 12 * Math.sin(ang + 0.4));
+            ctx.lineTo(arrowX - arrowSize * Math.cos(ang - 0.4), arrowY - arrowSize * Math.sin(ang - 0.4));
+            ctx.lineTo(arrowX - arrowSize * Math.cos(ang + 0.4), arrowY - arrowSize * Math.sin(ang + 0.4));
             ctx.closePath(); ctx.fillStyle = ctx.strokeStyle; ctx.fill();
             if (selected === l) {
-                ctx.fillStyle = "white"; ctx.strokeStyle = "black"; ctx.lineWidth = 1;
-                ctx.fillRect(l.cp.x - 5, l.cp.y - 5, 10, 10); ctx.strokeRect(l.cp.x - 5, l.cp.y - 5, 10, 10);
+                const cpS = 10/viewScale;
+                ctx.fillStyle = "white"; ctx.strokeStyle = "black"; ctx.lineWidth = 1/viewScale;
+                ctx.fillRect(l.cp.x - cpS/2, l.cp.y - cpS/2, cpS, cpS);
+                ctx.strokeRect(l.cp.x - cpS/2, l.cp.y - cpS/2, cpS, cpS);
             }
             const mid = getBezierPoint(0.5, s1, l.cp, s2);
-            ctx.fillStyle = "#333"; ctx.font = "bold 12px Arial"; ctx.textAlign = "center";
-            ctx.fillText(l.val, mid.x, mid.y - 12);
+            ctx.fillStyle = "#333"; ctx.font = `bold ${12/viewScale}px Arial`; ctx.textAlign = "center";
+            ctx.fillText(l.val, mid.x, mid.y - 12/viewScale);
         });
-        if(connecting) { ctx.beginPath(); ctx.moveTo(connecting.x, connecting.y); ctx.lineTo(mouse.x, mouse.y); ctx.strokeStyle = "#3498db"; ctx.stroke(); }
+
+        if(connecting) {
+            ctx.beginPath(); ctx.moveTo(connecting.x, connecting.y); ctx.lineTo(mouse.x, mouse.y);
+            ctx.strokeStyle = "#3498db"; ctx.lineWidth = 2/viewScale; ctx.stroke();
+        }
+
         states.forEach(s => {
             ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
             ctx.fillStyle = COLORS[s.status]; ctx.fill();
-            ctx.strokeStyle = selected===s ? '#e67e22' : '#333'; ctx.lineWidth = selected===s ? 4 : 1; ctx.stroke();
+            ctx.strokeStyle = selected===s ? '#e67e22' : '#333';
+            ctx.lineWidth = (selected===s ? 4 : 1) / viewScale;
+            ctx.stroke();
             ctx.fillStyle = "#000";
             ctx.textAlign = "center";
-            ctx.font = "bold 12px Arial";
-            ctx.fillText(s.value, s.x, s.y - 2); 
-            ctx.font = "10px Arial";
-            ctx.fillText("ID: " + s.id, s.x, s.y + 12); 
+            ctx.font = `bold ${12/viewScale}px Arial`;
+            ctx.fillText(s.value, s.x, s.y - 2/viewScale); 
+            ctx.font = `${10/viewScale}px Arial`;
+            ctx.fillText("ID: " + s.id, s.x, s.y + 12/viewScale); 
         });
+
+        ctx.restore();
         requestAnimationFrame(renderLoop);
+    }
+
+    // --- RIGHT SIDEBAR (Analytical PFD) ---
+    let rightSidebarCollapsed = false;
+    function toggleRightSidebar() {
+        rightSidebarCollapsed = !rightSidebarCollapsed;
+        const sb = document.getElementById('sidebar-right');
+        const btn = document.getElementById('sidebar-right-toggle');
+        const resizer = document.getElementById('sidebar-right-resize');
+        sb.classList.toggle('collapsed', rightSidebarCollapsed);
+        btn.textContent = rightSidebarCollapsed ? '◀' : '▶';
+        resizer.style.display = rightSidebarCollapsed ? 'none' : '';
+        setTimeout(resizeCanvas, 300);
+    }
+
+    // Right sidebar drag-resize
+    (() => {
+        const resizer = document.getElementById('sidebar-right-resize');
+        const sidebar = document.getElementById('sidebar-right');
+        let isResizing = false, startX = 0, startW = 0;
+        resizer.addEventListener('mousedown', e => {
+            isResizing = true; startX = e.clientX; startW = sidebar.offsetWidth;
+            resizer.classList.add('dragging');
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+        });
+        document.addEventListener('mousemove', e => {
+            if (!isResizing) return;
+            // Dragging left = increase width
+            const newW = Math.max(200, Math.min(500, startW - (e.clientX - startX)));
+            sidebar.style.width = newW + 'px';
+            resizeCanvas();
+        });
+        document.addEventListener('mouseup', () => {
+            if (isResizing) { isResizing = false; resizer.classList.remove('dragging'); document.body.style.cursor = ''; document.body.style.userSelect = ''; }
+        });
+    })();
+
+    // --- Analytical PFD Calculation (IEC 61508 / ISA-84) ---
+    //function factorial(n) { let r = 1; for(let i=2;i<=n;i++) r*=i; return r; }
+    //function comb(n, k) { if(k<0||k>n) return 0; return factorial(n)/(factorial(k)*factorial(n-k)); }
+
+    function togglePartialTest() {
+        const chk = document.getElementById('chk_partial_test');
+        const fields = document.getElementById('partial-test-fields');
+        // When called from the row div, toggle the checkbox state
+        if (event && event.target !== chk) {
+            chk.checked = !chk.checked;
+        }
+        fields.classList.toggle('visible', chk.checked);
+    }
+
+    function calcAnalytical() {
+        if (!pyodide) return alert("Pyodide ainda está carregando...");
+
+        const ldu   = parseFloat(document.getElementById('an_ldu').value)   || 0;
+        const ldd   = parseFloat(document.getElementById('an_ldd').value)   || 0;
+        const TI    = parseFloat(document.getElementById('an_TI').value)    || 0;
+        const MT    = parseFloat(document.getElementById('an_MT').value)    || 0;
+        const MTTR    = parseFloat(document.getElementById('an_MTTR').value)    || 0;
+        const beta  = parseFloat(document.getElementById('an_beta').value)  || 0;
+        const betad = parseFloat(document.getElementById('an_betad').value) || 0;
+        const M     = Math.round(parseFloat(document.getElementById('an_M').value)) || 1;
+        const N     = Math.round(parseFloat(document.getElementById('an_N').value)) || 1;
+        const chk_PTC = document.getElementById('chk_partial_test').checked
+        const PTC =  parseFloat(document.getElementById('an_PTC').value)  || 0;
+
+        pyodide.globals.set("js_ldu_raw", ldu);
+        pyodide.globals.set("js_ldd_raw", ldd);
+        pyodide.globals.set("js_TI_raw", TI);
+        pyodide.globals.set("js_MT_raw", MT);
+        pyodide.globals.set("js_MTTR_raw", MTTR);
+        pyodide.globals.set("js_beta_raw", beta);
+        pyodide.globals.set("js_betad_raw", betad);
+        pyodide.globals.set("js_M_raw", M);
+        pyodide.globals.set("js_N_raw", N);
+        pyodide.globals.set("js_chk_PTC",chk_PTC);
+        pyodide.globals.set("js_PTC",PTC);
+
+        const pyCode = `
+import logging
+import re
+from PyPFD import PyPFDN2595Avg
+from PyPFD import PyPFDRBDAvg
+
+
+def calPFD():
+    try:
+        print("Inicio do try")
+        λ_du = js_ldu_raw
+        λ_dd = js_ldd_raw
+        λ_du = js_ldu_raw
+        β = js_beta_raw/100
+        βd = js_betad_raw/100
+        T1_month = js_TI_raw/730
+        MT_month = js_MT_raw/730
+        MTTR = js_MTTR_raw
+        M = js_M_raw
+        N = js_N_raw
+        chk_PTC = js_chk_PTC
+        PTC = js_PTC/100
+
+        
+        print("Variáveis:")
+        #print(M)
+        #print(N)
+        #print(λ_du)
+        #print(λ_dd)
+        #print(β)
+        #print(βd)
+        #print(T1_month)
+        #print(MTTR)
+
+
+        pfd_rbd = 0
+        pfd_N2595 = 0
+
+        print("Calculando")
+        print(chk_PTC)
+        if chk_PTC == 0:
+            pfd_rbd = PyPFDRBDAvg.pfd_RBD_avg_MooN(M,N,λ_du,λ_dd,β,βd,T1_month,MTTR)
+            pfd_N2595 = PyPFDN2595Avg.pfd_N2595_avg_MooN(M,N,λ_du,λ_dd,β,βd,T1_month,MTTR)
+        else:
+            pfd_rbd = PyPFDRBDAvg.pfd_RBD_avg_MooN_1pt(M,N,λ_du,λ_dd,β,βd,MT_month,T1_month,PTC,MTTR)
+            if (M==1) and (N==1):
+                pfd_N2595 = PyPFDN2595Avg.pfd_N2595_avg_1oo1_1pt(λ_du,λ_dd,MT_month,T1_month,PTC,MTTR)
+            elif (M==1) and (N==2):
+                pfd_N2595 = PyPFDN2595Avg.pfd_N2595_avg_1oo2_1pt(λ_du,λ_dd,β,βd,MT_month,T1_month,PTC,MTTR)
+            elif  (M==2) and (N==2):
+                pfd_N2595 = PyPFDN2595Avg.pfd_N2595_avg_2oo2_1pt(λ_du,λ_dd,MT_month,T1_month,PTC,MTTR)
+            elif (M==2) and (N==3):
+                pfd_N2595 = PyPFDN2595Avg.pfd_N2595_avg_2oo3_1pt(λ_du,λ_dd,β,βd,MT_month,T1_month,PTC,MTTR)
+            else:
+                pfd_N2595 = "Erro, não possui teste parcial para a votação desejada"
+
+
+
+
+        print("RBD")
+        #print(pfd_rbd)
+
+        #print("N2595")
+        #print(pfd_N2595)
+        
+        return {"pfd_rbd": pfd_rbd, "pfd_N2595": pfd_N2595}
+
+
+    except Exception as e: return f"Erro Python: {str(e)}"    
+        
+        
+        
+        
+#print("print do python")        
+calPFD()`;
+
+
+
+
+
+        // Validate M <= N
+        if (M > N) {
+            document.getElementById('anal-formula-hint').textContent = '⚠️ M não pode ser maior que N.';
+            document.getElementById('anal-result').style.display = 'none';
+            return;
+        }
+
+
+        try {
+            document.getElementById('anal-formula-hint').href = 'https://github.com/rafarrocha/PyPFD';
+            document.getElementById('anal-formula-hint').textContent = 'Github rafarrocha/PyPFD';
+
+            const rawResult = pyodide.runPython(pyCode);
+            
+            let dadosJS = rawResult.toJs({ dict_converter: Object.fromEntries });
+            //const PFDavg = rawResult;
+            //console.log(dadosJS.pfd_rbd);
+            //console.log(dadosJS.pfd_N2595);
+
+            
+            const pfd_N2595 = dadosJS.pfd_N2595
+            const pfd_rbd = dadosJS.pfd_rbd
+            
+            rawResult.destroy();
+
+
+
+
+
+        
+
+
+        // PFD for a single independent channel (IEC 61508 simplified)
+        //const PFD1_ind = ldu_ind * (TI / 2) + ldd_ind * MT;
+        //const PFD1_ccf = ldu_ccf * (TI / 2) + ldd_ccf * MT;
+
+        // MooN architecture: system fails if >= (N-M+1) channels fail
+        // PFDavg_ind = sum_{k=N-M+1}^{N} C(N,k) * PFD1^k * (1-PFD1)^(N-k)
+        //let PFD_ind = 0;
+        //const failVotes = N - M + 1; // number of channel failures needed to fail system
+        //for (let k = failVotes; k <= N; k++) {
+        //    PFD_ind += comb(N, k) * Math.pow(PFD1_ind, k) * Math.pow(1 - PFD1_ind, N - k);
+        //}
+
+        // Total PFDavg = independent contribution + CCF contribution
+        //const PFDavg = PFD_ind + PFD1_ccf;
+
+        // SIL determination
+        //function getSIL(p) {
+        //    if (p >= 1e-5 && p < 1e-4) return 'SIL 1';
+        //    if (p >= 1e-4 && p < 1e-3) return '— (abaixo SIL 1)';
+        //    if (p < 1e-5 && p >= 1e-6) return 'SIL 2';
+        //    if (p < 1e-6 && p >= 1e-7) return 'SIL 3';
+        //    if (p < 1e-7 && p >= 1e-8) return 'SIL 4';
+        //    if (p >= 1e-3) return '— (abaixo SIL 1)';
+        //    return 'SIL 4+';
+        //}
+
+        function fmt(v) {
+            if (typeof v !== 'number' || isNaN(v)) return v;
+            return v.toExponential(1);
+        }
+
+        // Build result
+        const archLabel = `${M}oo${N} | TI=${TI}h`;
+        document.getElementById('anal-pfd_rbd-val').textContent = fmt(pfd_rbd);
+        document.getElementById('anal-pfd_rbd_sub-val').textContent = 'PyPFD - RBD';
+        document.getElementById('anal-pfd_rbd_sub-val').href = 'https://github.com/rafarrocha/PyPFD';
+
+
+
+
+        const rows = [
+            ['Votação', M + 'oo' + N],
+            ['PFDavg RBD', fmt(pfd_rbd) ],
+            ['PFDavg N2595', fmt(pfd_N2595) ],
+            ['β', beta],
+            ['βd', betad],
+            ['TI', TI + ' h'],
+            ['MTTR', MTTR + ' h']
+            
+
+        //    ['λ<sub>dd</sub> CCF', fmt(ldd_ccf) + ' h⁻¹'],
+        //    ['PFD canal único (ind.)', fmt(PFD1_ind)],
+        //    ['PFD CCF', fmt(PFD1_ccf)],
+        //    [`PFD ${M}oo${N} (ind.)`, fmt(PFD_ind)],
+        //    ['<b>PFD<sub>avg</sub> Total</b>', `<b>${fmt(PFDavg)}</b>`],
+        //    ['Nível SIL', getSIL(PFDavg)],
+        ];
+
+        document.getElementById('anal-detail-table').innerHTML = rows.map(r =>
+            `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`
+        ).join('');
+
+        document.getElementById('anal-result').style.display = 'block';
+
+        // Formula hint
+        //const hint = N === 1
+        //    ? `Fórmula 1oo1: PFD = λdu·(TI/2) + λdd·MT + CCF`
+        //    : `Fórmula ${M}oo${N}: soma binomial dos k=${failVotes}..${N} canais falhos + CCF (IEC 61508 Parte 6)`;
+        //document.getElementById('anal-formula-hint').textContent = hint;
+
+        } catch (err) { 
+        console.error(err);
+        }
+
+
+
     }
 
     canvas.oncontextmenu = e => e.preventDefault();
