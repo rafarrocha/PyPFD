@@ -892,18 +892,6 @@ def solve_matrix():
         py_rates = sorted(py_rates, key=lambda x: len(x['n']), reverse=True)
         py_tests = sorted(py_tests, key=lambda x: len(x['n']), reverse=True)
 
-        #print("------ Inicio - Dados de entrada")
-        #print(type(py_matrix))
-        #print(py_matrix)
-        #print(type(py_rates))
-        #print(py_rates)
-        #print(type(py_tests))
-        #print(py_tests)
-        #print(type(py_state_v))
-        #print(py_state_v)
-        #print(py_names)
-        #print("------ Fim    - Dados de entrada")
-
         contexto = {item['n']: item['v'] for item in py_rates} | {item['n']: 0.0 for item in py_tests}
 
         mkv_matrix = []
@@ -951,30 +939,8 @@ def solve_matrix():
             tst_matrix.append(tstM)
             tst_v.append(tst['v'])
 
-
-
-        #print("------ Inicio - Mkv_Matrix")
-        #print(mkv_matrix)
-
-        #for linha in mkv_matrix:
-        #    print(linha)
-        #print("------ Fim    - Mkv_Matrix")
-
-        #print("------ Inicio - Tst_Matrix")
-        #print(tst_matrix)
-        #for linha in tst_matrix:
-        #    #print("T:")
-        #    print(linha)
-        #print("------ Fim    - Tst_Matrix")
-
-        #print("------ Inicio - Tst_Vector")
-        #print(tst_v)
-        #print("------ Fim    - Tst_Matrix")
-        
-
         for s in py_state_v:
             print(s)
-
 
         intervalos = 200
         maxT = 0
@@ -989,13 +955,8 @@ def solve_matrix():
         mkv_pltm = pfd_avg["stateMatrix"]
         tempos = pfd_avg["tempo"]
 
-
-        #print("---- Inicio geração do gráfico")
-
         # --- GERAÇÃO DO GRÁFICO ---        
         
-        #print("Tempo maximo:")
-  
         # Cores baseadas no status (1 = OK, 0 = Falha)d
         cores = ['#90EE90' if s > 0.5 else '#FFCC99' for s in py_state_v]
    
@@ -1037,10 +998,6 @@ def solve_matrix():
             "grafico": f"data:image/png;base64,{img_str}"
         })
 
-
-
-        
-        #return f"{mkv_pfd_avg:.2e}"
 
     except Exception as e: return f"Erro Python: {str(e)}"
 solve_matrix()`;
@@ -1251,7 +1208,6 @@ from PyPFD import PyPFDRBDAvg
 
 def calPFD():
     try:
-        print("Inicio do try")
         λ_du = js_ldu_raw
         λ_dd = js_ldd_raw
         λ_du = js_ldu_raw
@@ -1265,23 +1221,10 @@ def calPFD():
         chk_PTC = js_chk_PTC
         PTC = js_PTC/100
 
-        
-        print("Variáveis:")
-        #print(M)
-        #print(N)
-        #print(λ_du)
-        #print(λ_dd)
-        #print(β)
-        #print(βd)
-        #print(T1_month)
-        #print(MTTR)
-
 
         pfd_rbd = 0
         pfd_N2595 = 0
 
-        print("Calculando")
-        print(chk_PTC)
         if chk_PTC == 0:
             pfd_rbd = PyPFDRBDAvg.pfd_RBD_avg_MooN(M,N,λ_du,λ_dd,β,βd,T1_month,MTTR)
             pfd_N2595 = PyPFDN2595Avg.pfd_N2595_avg_MooN(M,N,λ_du,λ_dd,β,βd,T1_month,MTTR)
@@ -1298,24 +1241,12 @@ def calPFD():
             else:
                 pfd_N2595 = "Erro: N2595 não possui essa combinação"
 
-
-
-
-        print("RBD")
-        #print(pfd_rbd)
-
-        #print("N2595")
-        #print(pfd_N2595)
         
         return {"pfd_rbd": pfd_rbd, "pfd_N2595": pfd_N2595}
 
 
     except Exception as e: return f"Erro Python: {str(e)}"    
-        
-        
-        
-        
-#print("print do python")        
+              
 calPFD()`;
 
 
@@ -1337,48 +1268,11 @@ calPFD()`;
             const rawResult = pyodide.runPython(pyCode);
             
             let dadosJS = rawResult.toJs({ dict_converter: Object.fromEntries });
-            //const PFDavg = rawResult;
-            //console.log(dadosJS.pfd_rbd);
-            //console.log(dadosJS.pfd_N2595);
 
-            
             const pfd_N2595 = dadosJS.pfd_N2595
             const pfd_rbd = dadosJS.pfd_rbd
             
             rawResult.destroy();
-
-
-
-
-
-        
-
-
-        // PFD for a single independent channel (IEC 61508 simplified)
-        //const PFD1_ind = ldu_ind * (TI / 2) + ldd_ind * MT;
-        //const PFD1_ccf = ldu_ccf * (TI / 2) + ldd_ccf * MT;
-
-        // MooN architecture: system fails if >= (N-M+1) channels fail
-        // PFDavg_ind = sum_{k=N-M+1}^{N} C(N,k) * PFD1^k * (1-PFD1)^(N-k)
-        //let PFD_ind = 0;
-        //const failVotes = N - M + 1; // number of channel failures needed to fail system
-        //for (let k = failVotes; k <= N; k++) {
-        //    PFD_ind += comb(N, k) * Math.pow(PFD1_ind, k) * Math.pow(1 - PFD1_ind, N - k);
-        //}
-
-        // Total PFDavg = independent contribution + CCF contribution
-        //const PFDavg = PFD_ind + PFD1_ccf;
-
-        // SIL determination
-        //function getSIL(p) {
-        //    if (p >= 1e-5 && p < 1e-4) return 'SIL 1';
-        //    if (p >= 1e-4 && p < 1e-3) return '— (abaixo SIL 1)';
-        //    if (p < 1e-5 && p >= 1e-6) return 'SIL 2';
-        //    if (p < 1e-6 && p >= 1e-7) return 'SIL 3';
-        //    if (p < 1e-7 && p >= 1e-8) return 'SIL 4';
-        //    if (p >= 1e-3) return '— (abaixo SIL 1)';
-        //    return 'SIL 4+';
-        //}
 
         function fmt(v) {
             if (typeof v !== 'number' || isNaN(v)) return v;
@@ -1391,9 +1285,6 @@ calPFD()`;
         document.getElementById('anal-pfd_rbd_sub-val').textContent = 'PyPFD - RBD';
         document.getElementById('anal-pfd_rbd_sub-val').href = 'https://github.com/rafarrocha/PyPFD';
 
-
-
-
         const rows = [
             ['Votação', M + 'oo' + N],
             ['PFDavg RBD', fmt(pfd_rbd) ],
@@ -1405,13 +1296,6 @@ calPFD()`;
             ['TI', TI + ' h'],
             ['MTTR', MTTR + ' h']
             
-
-        //    ['λ<sub>dd</sub> CCF', fmt(ldd_ccf) + ' h⁻¹'],
-        //    ['PFD canal único (ind.)', fmt(PFD1_ind)],
-        //    ['PFD CCF', fmt(PFD1_ccf)],
-        //    [`PFD ${M}oo${N} (ind.)`, fmt(PFD_ind)],
-        //    ['<b>PFD<sub>avg</sub> Total</b>', `<b>${fmt(PFDavg)}</b>`],
-        //    ['Nível SIL', getSIL(PFDavg)],
         ];
 
         document.getElementById('anal-detail-table').innerHTML = rows.map(r =>
@@ -1419,12 +1303,6 @@ calPFD()`;
         ).join('');
 
         document.getElementById('anal-result').style.display = 'block';
-
-        // Formula hint
-        //const hint = N === 1
-        //    ? `Fórmula 1oo1: PFD = λdu·(TI/2) + λdd·MT + CCF`
-        //    : `Fórmula ${M}oo${N}: soma binomial dos k=${failVotes}..${N} canais falhos + CCF (IEC 61508 Parte 6)`;
-        //document.getElementById('anal-formula-hint').textContent = hint;
 
         } catch (err) { 
         console.error(err);
