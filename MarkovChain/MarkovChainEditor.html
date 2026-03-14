@@ -247,29 +247,30 @@
             style="padding:5px 8px; border-radius:4px; border:1px solid #7f8c8d; background:#3d5166; color:white;
                    font-size:12px; min-width:160px; max-width:240px; outline:none;"
             title="Título do Projeto">
-        <button class="btn-io" onclick="saveProject()">💾 Salvar</button>
-        <button class="btn-io" onclick="document.getElementById('fileInput').click()">📂 Carregar</button>
+        <button class="btn-io" onclick="saveProject()" data-i18n="save">💾 Salvar</button>
+        <button class="btn-io" onclick="document.getElementById('fileInput').click()" data-i18n="load">📂 Carregar</button>
         <input type="file" id="fileInput" style="display:none" onchange="loadProject(event)">
-        <button style="background:#e67e22; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer; font-weight:bold; font-size:12px;" onclick="runPythonMkvCalculation()">⚙️ Calcular Markov</button>
+        <button style="background:#e67e22; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer; font-weight:bold; font-size:12px;" id="btn-calc-markov" onclick="runPythonMkvCalculation()">⚙️ Calcular Markov</button>
+        <button id="btn-lang" onclick="toggleLang()" style="background:#27ae60; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-weight:bold; font-size:12px; letter-spacing:1px;" title="Switch language / Trocar idioma">🌐 EN</button>
     </div>
 </div>
 
 <div id="main-container">
     <div id="sidebar-vars">
-        <h4>Taxas (Rates)</h4>
+        <h4 data-i18n="rates">Taxas (Rates)</h4>
         <table class="var-table" id="table-rates">
-            <thead><tr><th>Nome</th><th>Valor</th><th></th></tr></thead>
+            <thead><tr><th data-i18n="name">Nome</th><th data-i18n="value">Valor</th><th></th></tr></thead>
             <tbody></tbody>
         </table>
-        <button class="add-btn" onclick="addVariable('rates')">+ Add Taxa</button>
+        <button class="add-btn" onclick="addVariable('rates')" data-i18n="addRate">+ Add Taxa</button>
         <hr>
-        <h4>Testes</h4>
+        <h4 data-i18n="tests">Testes</h4>
         <table class="var-table" id="table-testes">
-            <thead><tr><th>Nome</th><th>Valor</th><th></th></tr></thead>
+            <thead><tr><th data-i18n="name">Nome</th><th data-i18n="value">Valor</th><th></th></tr></thead>
             <tbody></tbody>
         </table>
-        <button class="add-btn" onclick="addVariable('testes')">+ Add Teste</button>
-        <p style="font-size: 10px; color: #7f8c8d; margin-top: 20px;">* Clique em um item e aperte <b>DEL</b> para remover.</p>
+        <button class="add-btn" onclick="addVariable('testes')" data-i18n="addTest">+ Add Teste</button>
+        <p style="font-size: 10px; color: #7f8c8d; margin-top: 20px;" data-i18n="delHint">* Clique em um item e aperte <b>DEL</b> para remover.</p>
     </div>
     <div id="sidebar-resize"></div>
     <button id="sidebar-toggle" onclick="toggleSidebar()" title="Mostrar/Ocultar painel">◀</button>
@@ -287,14 +288,14 @@
 
         <div id="data-hud">
             <div id="hud-header" onclick="toggleHUD()">
-                <h4>📊 Matriz Simbólica</h4>
+                <h4 data-i18n="symbMatrix">📊 Matriz Simbólica</h4>
                 <button id="hud-toggle-btn" title="Minimizar/Expandir">▼</button>
             </div>
             <div id="hud-body">
                 <div id="matrix-ui"></div>
-                <h4 style="margin:8px 0 4px">Vetor de Estados</h4>
+                <h4 style="margin:8px 0 4px" data-i18n="stateVector">Vetor de Estados</h4>
                 <div id="status-vector-ui" class="vector-box">[]</div>
-                <div id="python-output" class="py-result">Python: Inicializando...</div>
+                <div id="python-output" class="py-result" data-i18n-init="pyInit">Python: Inicializando...</div>
             </div>
         </div>
     </div>
@@ -303,10 +304,10 @@
     <button id="sidebar-right-toggle" onclick="toggleRightSidebar()" title="Mostrar/Ocultar Cálculo Analítico">▶</button>
     <div id="sidebar-right">
 
-        <h4>🧮 PFD Analítico</h4>
+        <h4 data-i18n="analPFD">🧮 PFD Analítico</h4>
 
         <div class="anal-section">
-            <div class="anal-section-title">Taxas de Falha</div>
+            <div class="anal-section-title" data-i18n="failRates">Taxas de Falha</div>
             <div class="anal-var-row">
                 <label>λ<sub>du</sub></label>
                 <span class="unit">h⁻¹</span>
@@ -320,7 +321,7 @@
         </div>
 
         <div class="anal-section">
-            <div class="anal-section-title">Tempos</div>
+            <div class="anal-section-title" data-i18n="times">Tempos</div>
             <div class="anal-var-row">
                 <label>TI</label>
                 <span class="unit">h</span>
@@ -335,7 +336,7 @@
 
         <div class="partial-test-row" onclick="togglePartialTest()">
             <input type="checkbox" id="chk_partial_test" onchange="togglePartialTest()" onclick="event.stopPropagation()">
-            <label for="chk_partial_test">Considerar teste parcial?</label>
+            <label for="chk_partial_test" data-i18n="partialTest">Considerar teste parcial?</label>
         </div>
         <div id="partial-test-fields">
             <div class="anal-var-row">
@@ -351,7 +352,7 @@
         </div>
 
         <div class="anal-section">
-            <div class="anal-section-title">Fatores de Causa Comum (CCF)</div>
+            <div class="anal-section-title" data-i18n="ccf">Fatores de Causa Comum (CCF)</div>
             <div class="anal-var-row">
                 <label>β</label>
                 <span class="unit">%</span>
@@ -365,20 +366,20 @@
         </div>
 
         <div class="anal-section">
-            <div class="anal-section-title">Arquitetura MooN</div>
+            <div class="anal-section-title" data-i18n="moonArch">Arquitetura MooN</div>
             <div class="anal-var-row">
-                <label>M (votos)</label>
+                <label data-i18n="mVotes">M (votos)</label>
                 <span class="unit">—</span>
                 <input type="number" id="an_M" value="1" step="1" min="1" max="9">
             </div>
             <div class="anal-var-row">
-                <label>N (canais)</label>
+                <label data-i18n="nChannels">N (canais)</label>
                 <span class="unit">—</span>
                 <input type="number" id="an_N" value="1" step="1" min="1" max="9">
             </div>
         </div>
 
-        <button class="calc-btn" onclick="calcAnalytical()">▶ Calcular PFD Analítico</button>
+        <button class="calc-btn" onclick="calcAnalytical()" data-i18n="calcAnalPFD">▶ Calcular PFD Analítico</button>
 
         <div id="anal-result" style="display:none">
             <div class="anal-result-box">
@@ -396,24 +397,149 @@
 </div>
 
 <div id="linkModal" class="modal">
-    <label>Fórmula (Ex: λ_du*PDC):</label>
+    <label data-i18n="formula">Fórmula (Ex: λ_du*PDC):</label>
     <input type="text" id="m_l_val">
-    <button onclick="applyLinkEdits()" style="width:100%; background:var(--accent); color:white; border:none; padding:8px; cursor:pointer; margin-top:10px;">Aplicar Link</button>
+    <button onclick="applyLinkEdits()" style="width:100%; background:var(--accent); color:white; border:none; padding:8px; cursor:pointer; margin-top:10px;" data-i18n="applyLink">Aplicar Link</button>
 </div>
 
 <div id="stateModal" class="modal">
-    <label>Nome do Estado:</label>
+    <label data-i18n="stateName">Nome do Estado:</label>
     <input type="text" id="m_s_name">
-    <label>Status:</label>
+    <label data-i18n="status">Status:</label>
     <select id="m_s_status">
         <option value="Normal">Normal</option>
         <option value="Degraded">Degraded</option>
         <option value="Failure">Failure</option>
     </select>
-    <button onclick="applyStateEdits()" style="width:100%; background:var(--accent); color:white; border:none; padding:8px; cursor:pointer; margin-top:10px;">Salvar Estado</button>
+    <button onclick="applyStateEdits()" style="width:100%; background:var(--accent); color:white; border:none; padding:8px; cursor:pointer; margin-top:10px;" data-i18n="saveState">Salvar Estado</button>
 </div>
 
 <script>
+    // ===== i18n SYSTEM =====
+    const I18N = {
+        pt: {
+            rates: 'Taxas (Rates)',
+            tests: 'Testes',
+            name: 'Nome',
+            value: 'Valor',
+            addRate: '+ Add Taxa',
+            addTest: '+ Add Teste',
+            delHint: '* Clique em um item e aperte <b>DEL</b> para remover.',
+            symbMatrix: '📊 Matriz Simbólica',
+            stateVector: 'Vetor de Estados',
+            pyInit: 'Python: Inicializando...',
+            pyLoading: 'Python: Carregando Motor...',
+            pyInstalling: 'Python: Instalando PyPFD...',
+            pyReady: 'Python: Pronto (PyPFD Carregado)',
+            pyError: 'Erro ao carregar bibliotecas Python',
+            pyCalc: 'Calculando...',
+            pyExecError: 'Erro na execução.',
+            analPFD: '🧮 PFD Analítico',
+            failRates: 'Taxas de Falha',
+            times: 'Tempos',
+            partialTest: 'Considerar teste parcial?',
+            ccf: 'Fatores de Causa Comum (CCF)',
+            moonArch: 'Arquitetura MooN',
+            mVotes: 'M (votos)',
+            nChannels: 'N (canais)',
+            calcAnalPFD: '▶ Calcular PFD Analítico',
+            formula: 'Fórmula (Ex: λ_du*PDC):',
+            applyLink: 'Aplicar Link',
+            stateName: 'Nome do Estado:',
+            status: 'Status:',
+            saveState: 'Salvar Estado',
+            calcMarkov: '⚙️ Calcular Markov',
+            projectTitle: 'Título do Projeto',
+            save: '💾 Salvar',
+            load: '📂 Carregar',
+            pyodideLoading: 'Pyodide ainda está carregando...',
+            mGtN: '⚠️ M não pode ser maior que N.',
+            invalidFile: 'Arquivo inválido ou corrompido.',
+            untitled: 'Title',
+            votacao: 'Votação',
+            graphTitle: 'Análise de no Tempo',
+            printBtn: 'Imprimir Relatório',
+            errN2595: 'Erro: N2595 não possui essa combinação',
+            pyErrPrefix: 'Erro Python: ',
+        },
+        en: {
+            rates: 'Rates',
+            tests: 'Tests',
+            name: 'Name',
+            value: 'Value',
+            addRate: '+ Add Rate',
+            addTest: '+ Add Test',
+            delHint: '* Click an item and press <b>DEL</b> to remove.',
+            symbMatrix: '📊 Symbolic Matrix',
+            stateVector: 'State Vector',
+            pyInit: 'Python: Initializing...',
+            pyLoading: 'Python: Loading Engine...',
+            pyInstalling: 'Python: Installing PyPFD...',
+            pyReady: 'Python: Ready (PyPFD Loaded)',
+            pyError: 'Error loading Python libraries',
+            pyCalc: 'Calculating...',
+            pyExecError: 'Execution error.',
+            analPFD: '🧮 Analytical PFD',
+            failRates: 'Failure Rates',
+            times: 'Times',
+            partialTest: 'Consider partial test?',
+            ccf: 'Common Cause Failure (CCF) Factors',
+            moonArch: 'MooN Architecture',
+            mVotes: 'M (votes)',
+            nChannels: 'N (channels)',
+            calcAnalPFD: '▶ Calculate Analytical PFD',
+            formula: 'Formula (e.g.: λ_du*PDC):',
+            applyLink: 'Apply Link',
+            stateName: 'State Name:',
+            status: 'Status:',
+            saveState: 'Save State',
+            calcMarkov: '⚙️ Calculate Markov',
+            projectTitle: 'Project Title',
+            save: '💾 Save',
+            load: '📂 Load',
+            pyodideLoading: 'Pyodide is still loading...',
+            mGtN: '⚠️ M cannot be greater than N.',
+            invalidFile: 'Invalid or corrupted file.',
+            untitled: 'Untitled',
+            votacao: 'Voting',
+            graphTitle: 'Time Analysis',
+            printBtn: 'Print Report',
+            errN2595: 'Error: N2595 does not support this combination',
+            pyErrPrefix: 'Python Error: ',
+        }
+    };
+
+    let currentLang = 'en';
+
+    function t(key) {
+        return I18N[currentLang][key] || I18N['pt'][key] || key;
+    }
+
+    function applyLang() {
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            el.innerHTML = t(key);
+        });
+        // Update placeholder/title for project title input
+        const ptInput = document.getElementById('projectTitle');
+        if (ptInput) ptInput.placeholder = t('projectTitle');
+        // Update header buttons
+        const btnCalc = document.getElementById('btn-calc-markov');
+        if (btnCalc) btnCalc.innerHTML = t('calcMarkov');
+        const btnSave = document.querySelector('[onclick="saveProject()"]');
+        if (btnSave) btnSave.innerHTML = t('save');
+        const btnLoad = document.querySelector('[onclick="document.getElementById(\'fileInput\').click()"]');
+        if (btnLoad) btnLoad.innerHTML = t('load');
+        // Update lang button
+        document.getElementById('btn-lang').textContent = currentLang === 'pt' ? '🌐 EN' : '🌐 PT';
+    }
+
+    function toggleLang() {
+        currentLang = currentLang === 'pt' ? 'en' : 'pt';
+        applyLang();
+    }
+    // ===== END i18n =====
+
     const canvas = document.getElementById('mainCanvas');
     const ctx = canvas.getContext('2d');
     let states = [], links = [], variables = { 
@@ -496,16 +622,16 @@
     let pyodide;
     async function loadPy() { 
         try {
-            document.getElementById('python-output').innerText = "Python: Carregando Motor...";
+            document.getElementById('python-output').innerText = "Python: " + t('pyLoading').replace('Python: ','');
             pyodide = await loadPyodide();
             await pyodide.loadPackage(["micropip","matplotlib"]);
             const micropip = pyodide.pyimport("micropip");
-            document.getElementById('python-output').innerText = "Python: Instalando PyPFD...";
+            document.getElementById('python-output').innerText = t('pyInstalling');
             await micropip.install('PyPFD');
-            document.getElementById('python-output').innerText = "Python: Pronto (PyPFD Carregado)";
+            document.getElementById('python-output').innerText = t('pyReady');
         } catch(e) { 
             console.error(e);
-            document.getElementById('python-output').innerText = "Erro ao carregar bibliotecas Python"; 
+            document.getElementById('python-output').innerText = t('pyError'); 
         }
     }
     loadPy();
@@ -579,7 +705,7 @@
 
     // --- Funções de IO ---
     function saveProject() {
-        const title = document.getElementById('projectTitle').value || 'Sem título';
+        const title = document.getElementById('projectTitle').value || t('untitled');
 
         const partialTestChecked = document.getElementById('chk_partial_test').checked;
 
@@ -628,13 +754,13 @@
         reader.onload = e => {
             let content;
             try { content = JSON.parse(e.target.result); }
-            catch { alert('Arquivo inválido ou corrompido.'); return; }
+            catch { alert(t('invalidFile')); return; }
 
             states    = content.states    || [];
             links     = content.links     || [];
             variables = content.variables || { rates: [], testes: [] };
 
-            document.getElementById('projectTitle').value = content.title || 'Sem título';
+            document.getElementById('projectTitle').value = content.title || t('untitled');
 
             if (content.analytical) {
                 const a = content.analytical;
@@ -855,7 +981,7 @@
     }
 
     async function runPythonMkvCalculation() {
-        if (!pyodide) return alert("Pyodide ainda está carregando...");
+        if (!pyodide) return alert(t('pyodideLoading'));
         const sorted = [...states].sort((a, b) => a.id - b.id);
         const matrixData = sorted.map(r => sorted.map(c => {
             const l = links.find(li => li.from === r.uid && li.to === c.uid);
@@ -1002,7 +1128,7 @@ def solve_matrix():
     except Exception as e: return f"Erro Python: {str(e)}"
 solve_matrix()`;
     try {
-        document.getElementById('python-output').innerHTML = "Calculando...";
+        document.getElementById('python-output').innerHTML = t('pyCalc');
         const rawResult = await pyodide.runPythonAsync(pythonCode);
         
         if (rawResult.startsWith("Erro")) {
@@ -1018,7 +1144,7 @@ solve_matrix()`;
 
     } catch (err) { 
         console.error(err);
-        document.getElementById('python-output').innerHTML = "Erro na execução.";
+        document.getElementById('python-output').innerHTML = t('pyExecError');
     }
 
     }
@@ -1047,11 +1173,11 @@ solve_matrix()`;
                 </head>
                 <body>
                     <div class="card">
-                        <h2>Análise de no Tempo</h2>
+                        <h2>${t('graphTitle')}</h2>
                         <p class="res">PFDavg: ${pfdValue}</p>
                         <img src="${base64Image}" />
                         <br><br>
-                        <button onclick="window.print()">Imprimir Relatório</button>
+                        <button onclick="window.print()">${t('printBtn')}</button>
                     </div>
                     <div class="signature">by Rafael Rocha</div>
                 </body>
@@ -1173,7 +1299,7 @@ solve_matrix()`;
     }
 
     function calcAnalytical() {
-        if (!pyodide) return alert("Pyodide ainda está carregando...");
+        if (!pyodide) return alert(t('pyodideLoading'));
 
         const ldu   = parseFloat(document.getElementById('an_ldu').value)   || 0;
         const ldd   = parseFloat(document.getElementById('an_ldd').value)   || 0;
@@ -1255,7 +1381,7 @@ calPFD()`;
 
         // Validate M <= N
         if (M > N) {
-            document.getElementById('anal-formula-hint').textContent = '⚠️ M não pode ser maior que N.';
+            document.getElementById('anal-formula-hint').textContent = t('mGtN');
             document.getElementById('anal-result').style.display = 'none';
             return;
         }
@@ -1286,7 +1412,7 @@ calPFD()`;
         document.getElementById('anal-pfd_rbd_sub-val').href = 'https://github.com/rafarrocha/PyPFD';
 
         const rows = [
-            ['Votação', M + 'oo' + N],
+            [t('votacao'), M + 'oo' + N],
             ['PFDavg RBD', fmt(pfd_rbd) ],
             ['PFDavg N2595', fmt(pfd_N2595) ],
             ['λdd', fmt(ldu) ],
@@ -1295,7 +1421,6 @@ calPFD()`;
             ['βd', betad],
             ['TI', TI + ' h'],
             ['MTTR', MTTR + ' h']
-            
         ];
 
         document.getElementById('anal-detail-table').innerHTML = rows.map(r =>
@@ -1314,6 +1439,7 @@ calPFD()`;
 
     canvas.oncontextmenu = e => e.preventDefault();
     init();
+    applyLang();
 </script>
 </body>
 </html>
