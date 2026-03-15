@@ -1005,7 +1005,13 @@ import base64
 import numpy as np
 from PyPFD import PyPFDMarkov
 
-
+def plot_markers(n):
+        markers = [".","o","<",">"]
+        return markers[n % len(markers)]
+        
+def plot_colors(n):
+        cores = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd','#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
+        return cores[n % len(cores)]
 
 def solve_matrix():
     try:
@@ -1075,6 +1081,7 @@ def solve_matrix():
             if tmp > maxT:
                 maxT = tmp
 
+
         pfd_avg = PyPFDMarkov.markov_cal_Ntest_plot(mkv_matrix,py_state_v,tst_matrix,tst_v,intervalos)
         
         mkv_pfd_avg = pfd_avg["pfdavg"]
@@ -1084,19 +1091,27 @@ def solve_matrix():
         # --- GERAÇÃO DO GRÁFICO ---        
         
         # Cores baseadas no status (1 = OK, 0 = Falha)d
-        cores = ['#90EE90' if s > 0.5 else '#FFCC99' for s in py_state_v]
+
    
         plt.figure(figsize=(12, 8))
-
-
-        markers = ['.',",",'o',"1","2","3","4",'.',",",'o',"1","2","3","4",'.',",",'o',"1","2","3","4"]
 
         for i in range(len(py_state_v)):
             if py_state_v[i] == 0:
                 vetor_coluna = [linha[i] for linha in mkv_pltm]
                 probabilidade = vetor_coluna
-                plt.plot(tempos, probabilidade, cores[i], marker=markers[i], markevery=50, linestyle='-', label=py_names[i])
-            
+                plt.plot(tempos, probabilidade, plot_colors(i), marker=plot_markers(i), markevery=50, linestyle='-', label=py_names[i])
+        
+
+        fail_sum = []        
+        for linha in mkv_pltm:
+            sum=0
+            for i in range(len(py_state_v)):    
+                if py_state_v[i] == 0:
+                    sum = sum + linha[i]
+            fail_sum.append(sum)
+
+        plt.plot(tempos, fail_sum, plot_colors(len(py_state_v)+1), marker=plot_markers(len(py_state_v)+1), markevery=50, linestyle='-', label="Sum")
+        
         # Criao gráfico garantindo que os eixos coincidam
         
         
