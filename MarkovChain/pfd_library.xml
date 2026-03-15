@@ -1,0 +1,270 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  PFD Component Library — IEC 61508 / ISA-84
+  Failure rates (λdu, λdd) in h⁻¹
+  TI  : Test Interval (h)
+  MT  : Manual Test interval for partial test (h)
+  MTTR: Mean Time To Restore (h)
+  beta, betad: Common Cause Failure factors (%)
+  M, N: MooN voting architecture
+  ptc : Partial Test Coverage (%)
+  partialTest: true | false
+-->
+<pfd_library version="1.0" standard="IEC 61508 / ISA-84">
+
+  <!-- ═══════════════════════════════════════════════════ SENSORS ═══ -->
+  <category type="sensor">
+
+    <component id="S01">
+      <name>Pressure Transmitter (1oo1)</name>
+      <description>Smart pressure transmitter, single channel — typical subsea/topside application</description>
+      <ldu>1.0e-6</ldu>
+      <ldd>2.5e-5</ldd>
+      <TI>8760</TI>
+      <MTTR>8</MTTR>
+      <beta>5</beta>
+      <betad>5</betad>
+      <M>1</M>
+      <N>1</N>
+      <partialTest>false</partialTest>
+      <MT>87600</MT>
+      <ptc>0</ptc>
+    </component>
+
+    <component id="S02">
+      <name>Pressure Transmitter (1oo2)</name>
+      <description>Redundant pressure transmitters with 1oo2 voting — enhanced availability</description>
+      <ldu>1.0e-6</ldu>
+      <ldd>2.5e-5</ldd>
+      <TI>8760</TI>
+      <MTTR>8</MTTR>
+      <beta>5</beta>
+      <betad>5</betad>
+      <M>1</M>
+      <N>2</N>
+      <partialTest>false</partialTest>
+      <MT>87600</MT>
+      <ptc>0</ptc>
+    </component>
+
+    <component id="S03">
+      <name>Temperature Transmitter (1oo2)</name>
+      <description>Dual RTD/thermocouple transmitter for high-temperature process protection</description>
+      <ldu>2.0e-6</ldu>
+      <ldd>4.0e-5</ldd>
+      <TI>8760</TI>
+      <MTTR>12</MTTR>
+      <beta>8</beta>
+      <betad>8</betad>
+      <M>1</M>
+      <N>2</N>
+      <partialTest>false</partialTest>
+      <MT>87600</MT>
+      <ptc>0</ptc>
+    </component>
+
+    <component id="S04">
+      <name>Gas Detector (2oo3)</name>
+      <description>Catalytic bead or IR gas detectors in 2oo3 voting — fire and gas system</description>
+      <ldu>5.0e-6</ldu>
+      <ldd>1.0e-4</ldd>
+      <TI>4380</TI>
+      <MTTR>8</MTTR>
+      <beta>10</beta>
+      <betad>10</betad>
+      <M>2</M>
+      <N>3</N>
+      <partialTest>false</partialTest>
+      <MT>87600</MT>
+      <ptc>0</ptc>
+    </component>
+
+    <component id="S05">
+      <name>Level Switch (1oo2) with Partial Test</name>
+      <description>Guided-wave radar level switch, 1oo2 voting with 6-month partial stroke test</description>
+      <ldu>3.0e-6</ldu>
+      <ldd>6.0e-5</ldd>
+      <TI>8760</TI>
+      <MTTR>8</MTTR>
+      <beta>6</beta>
+      <betad>6</betad>
+      <M>1</M>
+      <N>2</N>
+      <partialTest>true</partialTest>
+      <MT>4380</MT>
+      <ptc>70</ptc>
+    </component>
+
+  </category>
+
+  <!-- ════════════════════════════════════════════════ LOGIC SOLVERS ═══ -->
+  <category type="logic">
+
+    <component id="L01">
+      <name>Safety PLC — Single CPU (1oo1)</name>
+      <description>IEC 61511 compliant safety PLC, single processor, redundant I/O modules</description>
+      <ldu>5.0e-7</ldu>
+      <ldd>1.0e-5</ldd>
+      <TI>8760</TI>
+      <MTTR>24</MTTR>
+      <beta>2</beta>
+      <betad>2</betad>
+      <M>1</M>
+      <N>1</N>
+      <partialTest>false</partialTest>
+      <MT>87600</MT>
+      <ptc>0</ptc>
+    </component>
+
+    <component id="L02">
+      <name>Safety PLC — Dual Redundant (1oo2D)</name>
+      <description>Hot-standby dual-processor safety controller — high SIL applications</description>
+      <ldu>3.0e-7</ldu>
+      <ldd>8.0e-6</ldd>
+      <TI>8760</TI>
+      <MTTR>24</MTTR>
+      <beta>2</beta>
+      <betad>2</betad>
+      <M>1</M>
+      <N>2</N>
+      <partialTest>false</partialTest>
+      <MT>87600</MT>
+      <ptc>0</ptc>
+    </component>
+
+    <component id="L03">
+      <name>Safety PLC — Triple Modular Redundant (2oo3)</name>
+      <description>TMR safety controller with 2oo3 voting — SIL 3 applications</description>
+      <ldu>2.0e-7</ldu>
+      <ldd>5.0e-6</ldd>
+      <TI>8760</TI>
+      <MTTR>24</MTTR>
+      <beta>1</beta>
+      <betad>1</betad>
+      <M>2</M>
+      <N>3</N>
+      <partialTest>false</partialTest>
+      <MT>87600</MT>
+      <ptc>0</ptc>
+    </component>
+
+    <component id="L04">
+      <name>Relay-Based Logic Unit (1oo1)</name>
+      <description>Hardwired relay module for simple on/off safety functions</description>
+      <ldu>2.0e-6</ldu>
+      <ldd>3.0e-5</ldd>
+      <TI>8760</TI>
+      <MTTR>8</MTTR>
+      <beta>3</beta>
+      <betad>3</betad>
+      <M>1</M>
+      <N>1</N>
+      <partialTest>false</partialTest>
+      <MT>87600</MT>
+      <ptc>0</ptc>
+    </component>
+
+    <component id="L05">
+      <name>Safety PLC — SIL 2 with Partial Self-Test</name>
+      <description>Safety controller with continuous self-diagnostics and periodic proof test coverage</description>
+      <ldu>5.0e-7</ldu>
+      <ldd>1.0e-5</ldd>
+      <TI>8760</TI>
+      <MTTR>24</MTTR>
+      <beta>2</beta>
+      <betad>2</betad>
+      <M>1</M>
+      <N>1</N>
+      <partialTest>true</partialTest>
+      <MT>4380</MT>
+      <ptc>60</ptc>
+    </component>
+
+  </category>
+
+  <!-- ═══════════════════════════════════════════════ FINAL ELEMENTS ═══ -->
+  <category type="final_element">
+
+    <component id="F01">
+      <name>Shutdown Valve — Fail-Closed (1oo1)</name>
+      <description>Spring-return ball valve with pneumatic actuator — HIPPS / ESD application</description>
+      <ldu>2.0e-5</ldu>
+      <ldd>5.0e-4</ldd>
+      <TI>8760</TI>
+      <MTTR>8</MTTR>
+      <beta>10</beta>
+      <betad>10</betad>
+      <M>1</M>
+      <N>1</N>
+      <partialTest>false</partialTest>
+      <MT>87600</MT>
+      <ptc>0</ptc>
+    </component>
+
+    <component id="F02">
+      <name>Shutdown Valve — Fail-Closed (1oo1) with PST</name>
+      <description>Spring-return ball valve with partial stroke test device — 6-month PST interval</description>
+      <ldu>2.0e-5</ldu>
+      <ldd>5.0e-4</ldd>
+      <TI>8760</TI>
+      <MTTR>8</MTTR>
+      <beta>10</beta>
+      <betad>10</betad>
+      <M>1</M>
+      <N>1</N>
+      <partialTest>true</partialTest>
+      <MT>4380</MT>
+      <ptc>80</ptc>
+    </component>
+
+    <component id="F03">
+      <name>Shutdown Valve — Redundant (1oo2)</name>
+      <description>Two parallel fail-closed valves in 1oo2 voting — process safety critical line</description>
+      <ldu>2.0e-5</ldu>
+      <ldd>5.0e-4</ldd>
+      <TI>8760</TI>
+      <MTTR>8</MTTR>
+      <beta>10</beta>
+      <betad>10</betad>
+      <M>1</M>
+      <N>2</N>
+      <partialTest>false</partialTest>
+      <MT>87600</MT>
+      <ptc>0</ptc>
+    </component>
+
+    <component id="F04">
+      <name>Blowdown Valve — Fail-Open (1oo1)</name>
+      <description>Fail-open depressurisation valve for pressure relief safety function</description>
+      <ldu>1.5e-5</ldu>
+      <ldd>3.0e-4</ldd>
+      <TI>8760</TI>
+      <MTTR>12</MTTR>
+      <beta>8</beta>
+      <betad>8</betad>
+      <M>1</M>
+      <N>1</N>
+      <partialTest>false</partialTest>
+      <MT>87600</MT>
+      <ptc>0</ptc>
+    </component>
+
+    <component id="F05">
+      <name>Motor-Operated Isolation Valve (2oo3)</name>
+      <description>Electric motor-actuated gate valve in 2oo3 voting — compressor protection</description>
+      <ldu>3.0e-5</ldu>
+      <ldd>6.0e-4</ldd>
+      <TI>8760</TI>
+      <MTTR>16</MTTR>
+      <beta>12</beta>
+      <betad>12</betad>
+      <M>2</M>
+      <N>3</N>
+      <partialTest>false</partialTest>
+      <MT>87600</MT>
+      <ptc>0</ptc>
+    </component>
+
+  </category>
+
+</pfd_library>
