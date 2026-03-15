@@ -19,7 +19,7 @@
       <manufacturer>Endress+Hauser</manufacturer>
       <model>Cerabar PMC71</model>
       <name>Pressure Transmitter (1oo1)</name>
-      <description>Smart pressure transmitter, single channel — typical subsea/topside application</description>
+      <description>TEST DATA - Smart pressure transmitter, single channel — typical subsea/topside application</description>
       <ldu>1.0e-6</ldu>
       <ldd>2.5e-5</ldd>
       <TI>8760</TI>
@@ -37,7 +37,7 @@
       <manufacturer>Emerson</manufacturer>
       <model>Rosemount 3051S</model>
       <name>Pressure Transmitter (1oo2)</name>
-      <description>Redundant pressure transmitters with 1oo2 voting — enhanced availability</description>
+      <description>TEST DATA - Redundant pressure transmitters with 1oo2 voting — enhanced availability</description>
       <ldu>1.0e-6</ldu>
       <ldd>2.5e-5</ldd>
       <TI>8760</TI>
@@ -55,7 +55,7 @@
       <manufacturer>Yokogawa</manufacturer>
       <model>YTA710 Dual-Input</model>
       <name>Temperature Transmitter (1oo2)</name>
-      <description>Dual RTD/thermocouple transmitter for high-temperature process protection</description>
+      <description>TEST DATA - Dual RTD/thermocouple transmitter for high-temperature process protection</description>
       <ldu>2.0e-6</ldu>
       <ldd>4.0e-5</ldd>
       <TI>8760</TI>
@@ -73,7 +73,7 @@
       <manufacturer>Dräger</manufacturer>
       <model>POLYTRON 8700 IR</model>
       <name>Gas Detector (2oo3)</name>
-      <description>Catalytic bead or IR gas detectors in 2oo3 voting — fire and gas system</description>
+      <description>TEST DATA - Catalytic bead or IR gas detectors in 2oo3 voting — fire and gas system</description>
       <ldu>5.0e-6</ldu>
       <ldd>1.0e-4</ldd>
       <TI>4380</TI>
@@ -91,7 +91,7 @@
       <manufacturer>VEGA</manufacturer>
       <model>VEGAFLEX 81</model>
       <name>Level Switch (1oo2) with Partial Test</name>
-      <description>Guided-wave radar level switch, 1oo2 voting with 6-month partial stroke test</description>
+      <description>TEST DATA - Guided-wave radar level switch, 1oo2 voting with 6-month partial stroke test</description>
       <ldu>3.0e-6</ldu>
       <ldd>6.0e-5</ldd>
       <TI>8760</TI>
@@ -114,7 +114,7 @@
       <manufacturer>Rockwell Automation</manufacturer>
       <model>Allen-Bradley GuardLogix 5580</model>
       <name>Safety PLC — Single CPU (1oo1)</name>
-      <description>IEC 61511 compliant safety PLC, single processor, redundant I/O modules</description>
+      <description>TEST DATA - IEC 61511 compliant safety PLC, single processor, redundant I/O modules</description>
       <ldu>5.0e-7</ldu>
       <ldd>1.0e-5</ldd>
       <TI>8760</TI>
@@ -132,7 +132,7 @@
       <manufacturer>Siemens</manufacturer>
       <model>SIMATIC S7-300F (1oo2D)</model>
       <name>Safety PLC — Dual Redundant (1oo2D)</name>
-      <description>Hot-standby dual-processor safety controller — high SIL applications</description>
+      <description>TEST DATA - Hot-standby dual-processor safety controller — high SIL applications</description>
       <ldu>3.0e-7</ldu>
       <ldd>8.0e-6</ldd>
       <TI>8760</TI>
@@ -150,7 +150,7 @@
       <manufacturer>Triconex</manufacturer>
       <model>Tricon CX v11</model>
       <name>Safety PLC — Triple Modular Redundant (2oo3)</name>
-      <description>TMR safety controller with 2oo3 voting — SIL 3 applications</description>
+      <description>TEST DATA - TMR safety controller with 2oo3 voting — SIL 3 applications</description>
       <ldu>2.0e-7</ldu>
       <ldd>5.0e-6</ldd>
       <TI>8760</TI>
@@ -168,7 +168,7 @@
       <manufacturer>Phoenix Contact</manufacturer>
       <model>PSR-SCP-24DC/ESD/4X1</model>
       <name>Relay-Based Logic Unit (1oo1)</name>
-      <description>Hardwired relay module for simple on/off safety functions</description>
+      <description>TEST DATA - Hardwired relay module for simple on/off safety functions</description>
       <ldu>2.0e-6</ldu>
       <ldd>3.0e-5</ldd>
       <TI>8760</TI>
@@ -186,7 +186,7 @@
       <manufacturer>ABB</manufacturer>
       <model>AC500-S Safety PLC</model>
       <name>Safety PLC — SIL 2 with Partial Self-Test</name>
-      <description>Safety controller with continuous self-diagnostics and periodic proof test coverage</description>
+      <description>TEST DATA - Safety controller with continuous self-diagnostics and periodic proof test coverage</description>
       <ldu>5.0e-7</ldu>
       <ldd>1.0e-5</ldd>
       <TI>8760</TI>
@@ -209,7 +209,7 @@
       <manufacturer>Emerson</manufacturer>
       <model>Fisher D4 Series</model>
       <name>Shutdown Valve — Fail-Closed (1oo1)</name>
-      <description>Spring-return ball valve with pneumatic actuator — HIPPS / ESD application</description>
+      <description>TEST DATA - Spring-return ball valve with pneumatic actuator — HIPPS / ESD application</description>
       <ldu>2.0e-5</ldu>
       <ldd>5.0e-4</ldd>
       <TI>8760</TI>
@@ -227,7 +227,7 @@
       <manufacturer>Flowserve</manufacturer>
       <model>Worcester B-Series + PST</model>
       <name>Shutdown Valve — Fail-Closed (1oo1) with PST</name>
-      <description>Spring-return ball valve with partial stroke test device — 6-month PST interval</description>
+      <description>TEST DATA - Spring-return ball valve with partial stroke test device — 6-month PST interval</description>
       <ldu>2.0e-5</ldu>
       <ldd>5.0e-4</ldd>
       <TI>8760</TI>
@@ -245,7 +245,7 @@
       <manufacturer>Metso</manufacturer>
       <model>Neles ND9000 (1oo2)</model>
       <name>Shutdown Valve — Redundant (1oo2)</name>
-      <description>Two parallel fail-closed valves in 1oo2 voting — process safety critical line</description>
+      <description>TEST DATA - Two parallel fail-closed valves in 1oo2 voting — process safety critical line</description>
       <ldu>2.0e-5</ldu>
       <ldd>5.0e-4</ldd>
       <TI>8760</TI>
@@ -263,7 +263,7 @@
       <manufacturer>IMI CCI</manufacturer>
       <model>DRAG Blowdown Valve</model>
       <name>Blowdown Valve — Fail-Open (1oo1)</name>
-      <description>Fail-open depressurisation valve for pressure relief safety function</description>
+      <description>TEST DATA - Fail-open depressurisation valve for pressure relief safety function</description>
       <ldu>1.5e-5</ldu>
       <ldd>3.0e-4</ldd>
       <TI>8760</TI>
@@ -281,7 +281,7 @@
       <manufacturer>Rotork</manufacturer>
       <model>IQ3 MOV Series</model>
       <name>Motor-Operated Isolation Valve (2oo3)</name>
-      <description>Electric motor-actuated gate valve in 2oo3 voting — compressor protection</description>
+      <description>TEST DATA - Electric motor-actuated gate valve in 2oo3 voting — compressor protection</description>
       <ldu>3.0e-5</ldu>
       <ldd>6.0e-4</ldd>
       <TI>8760</TI>
