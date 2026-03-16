@@ -1,10 +1,967 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PFD Triple Calculator — Rafael Rocha</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --steel:      #0d1b2a;
+    --steel-2:    #132233;
+    --steel-3:    #1c3248;
+    --accent:     #1a6ea8;
+    --accent-hi:  #2e9fd4;
+    --wire:       #253f56;
+    --text:       #c8dce8;
+    --text-mid:   #7fa4be;
+    --text-faint: #3d6278;
+    --green:      #1d9e70;
+    --amber:      #c08020;
+    --paper:      #f0f4f7;
+    --mono: 'DM Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--steel);
+    color: var(--text);
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  /* ── GRID BACKGROUND ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(26,110,168,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(26,110,168,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(13,27,42,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--wire);
+    padding: 12px 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+  }
+  .nav-brand .icon {
+    width: 28px; height: 28px;
+    background: var(--accent);
+    border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+  }
+  .nav-brand .name {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    letter-spacing: 0.5px;
+  }
+  .nav-links {
+    display: flex;
+    gap: 28px;
+    list-style: none;
+  }
+  .nav-links a {
+    font-size: 13px;
+    color: var(--text-mid);
+    text-decoration: none;
+    letter-spacing: 0.3px;
+    transition: color 0.15s;
+  }
+  .nav-links a:hover { color: var(--accent-hi); }
+
+  /* ── SECTIONS ── */
+  section, .hero { position: relative; z-index: 1; }
+
+  /* ── HERO ── */
+  .hero {
+    padding: 96px 48px 80px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  .hero-eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent-hi);
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .hero-eyebrow::before {
+    content: '';
+    display: block;
+    width: 32px; height: 1px;
+    background: var(--accent-hi);
+  }
+  .hero h1 {
+    font-size: clamp(36px, 5vw, 58px);
+    font-weight: 700;
+    line-height: 1.08;
+    letter-spacing: -1px;
+    color: #ddeef8;
+    margin-bottom: 8px;
+  }
+  .hero h1 span {
+    color: var(--accent-hi);
+  }
+  .hero-sub {
+    font-size: 18px;
+    color: var(--text-mid);
+    font-weight: 300;
+    margin: 20px 0 36px;
+    max-width: 620px;
+    line-height: 1.6;
+  }
+  .hero-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 40px;
+  }
+  .badge {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 4px 10px;
+    border-radius: 3px;
+    letter-spacing: 0.5px;
+    font-weight: 500;
+  }
+  .badge-blue  { background: rgba(26,110,168,0.2); color: var(--accent-hi); border: 1px solid rgba(46,159,212,0.3); }
+  .badge-green { background: rgba(29,158,112,0.15); color: #4cd4a4; border: 1px solid rgba(29,158,112,0.3); }
+  .badge-amber { background: rgba(192,128,32,0.15); color: #e8b050; border: 1px solid rgba(192,128,32,0.3); }
+  .badge-gray  { background: rgba(255,255,255,0.05); color: var(--text-mid); border: 1px solid var(--wire); }
+
+  .hero-cta {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--accent);
+    color: white;
+    padding: 11px 22px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 0.15s, transform 0.1s;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  .btn-primary:hover { background: var(--accent-hi); transform: translateY(-1px); }
+  .btn-outline {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: transparent;
+    color: var(--text-mid);
+    padding: 11px 22px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    border: 1px solid var(--wire);
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .btn-outline:hover { border-color: var(--accent-hi); color: var(--accent-hi); }
+
+  /* ── MOCK SCREENSHOT ── */
+  .hero-visual {
+    margin: 64px auto 0;
+    max-width: 1000px;
+    position: relative;
+  }
+  .screen-frame {
+    background: #1c2b3a;
+    border: 1px solid var(--wire);
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04);
+  }
+  .screen-bar {
+    background: #0d1b2a;
+    border-bottom: 2px solid var(--accent);
+    padding: 7px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .screen-bar .s-title {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #8ab0c8;
+  }
+  .screen-bar .s-meta {
+    font-family: var(--mono);
+    font-size: 8px;
+    color: #3d6278;
+  }
+  .screen-toolbar {
+    background: #1a2e40;
+    border-bottom: 1px solid #253f56;
+    padding: 4px 14px;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .s-btn {
+    font-family: var(--mono);
+    font-size: 8px;
+    padding: 2px 9px;
+    border-radius: 2px;
+    background: #253f56;
+    color: #8ab0c8;
+    border: 1px solid #304f68;
+  }
+  .s-btn.save { border-color: #1d7a50; color: #4cd4a4; }
+  .s-btn.pdf  { border-color: #7a2020; color: #e07070; }
+  .s-lib { font-family: var(--mono); font-size: 8px; color: #3d6278; margin-left: auto; }
+  .screen-panels {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0;
+    border-bottom: 2px solid #0d1b2a;
+  }
+  .s-panel {
+    border-right: 1px solid #253f56;
+    padding: 8px 10px;
+    min-height: 120px;
+  }
+  .s-panel:last-child { border-right: none; }
+  .s-panel-hdr {
+    font-family: var(--mono);
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: #8ab0c8;
+    background: var(--accent);
+    margin: -8px -10px 8px;
+    padding: 4px 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .s-badge { background: rgba(255,255,255,0.15); font-size: 7px; padding: 1px 5px; border-radius: 2px; }
+  .s-sec { font-size: 7px; color: #3d6278; text-transform: uppercase; letter-spacing: 0.8px; border-bottom: 1px solid #1c3248; padding-bottom: 1px; margin: 6px 0 3px; }
+  .s-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; }
+  .s-label { font-family: var(--mono); font-size: 8px; color: #5a8aa8; }
+  .s-input { background: white; border-radius: 1px; width: 60px; height: 10px; opacity: 0.8; }
+  .s-input.text { width: 100%; height: 10px; margin-bottom: 2px; }
+  .s-result {
+    background: #0d1b2a;
+    border-left: 2px solid var(--accent);
+    padding: 4px 6px;
+    margin-top: 6px;
+  }
+  .s-result .r-label { font-family: var(--mono); font-size: 6px; color: #3d6278; text-transform: uppercase; }
+  .s-result .r-val   { font-family: var(--mono); font-size: 13px; font-weight: 700; color: #ddeef8; }
+  .screen-summary {
+    background: #0d1b2a;
+    border-top: 2px solid var(--accent);
+    padding: 0;
+    display: flex;
+    height: 36px;
+  }
+  .ss-label { background: var(--accent); color: white; font-family: var(--mono); font-size: 7px; font-weight: 700; letter-spacing: 1px; padding: 0 12px; display: flex; align-items: center; text-transform: uppercase; white-space: nowrap; }
+  .ss-items { flex: 1; display: flex; align-items: center; padding: 0 12px; gap: 0; }
+  .ss-item { flex: 1; text-align: center; border-right: 1px solid #253f56; padding: 0 8px; }
+  .ss-item:last-child { border-right: none; }
+  .ss-name { font-family: var(--mono); font-size: 6px; color: #3d6278; text-transform: uppercase; }
+  .ss-val  { font-family: var(--mono); font-size: 11px; font-weight: 700; color: #6ab8d8; }
+  .ss-sys { border-left: 2px solid var(--accent); padding: 0 14px; display: flex; flex-direction: column; justify-content: center; }
+  .ss-sys-val { font-family: var(--mono); font-size: 12px; font-weight: 900; color: #e8c050; }
+  .ss-sil { font-family: var(--mono); font-size: 8px; color: #6ab8d8; }
+  .ss-bar { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 0 12px; border-left: 1px solid #253f56; gap: 4px; }
+  .ss-bar-title { font-size: 6px; color: #3d6278; text-transform: uppercase; letter-spacing: 0.5px; font-family: var(--mono); }
+  .ss-bar-track { height: 10px; background: rgba(255,255,255,0.05); border-radius: 1px; display: flex; overflow: hidden; }
+  .ss-seg1 { background: #2e86c1; width: 42%; }
+  .ss-seg2 { background: #1a9e6e; width: 28%; }
+  .ss-seg3 { background: #c07a1a; width: 30%; }
+
+  /* ── SECTION LAYOUT ── */
+  .section {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 80px 48px;
+  }
+  .section-eyebrow {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent-hi);
+    margin-bottom: 12px;
+  }
+  .section h2 {
+    font-size: clamp(24px, 3vw, 36px);
+    font-weight: 700;
+    color: #ddeef8;
+    letter-spacing: -0.5px;
+    margin-bottom: 16px;
+  }
+  .section-lead {
+    font-size: 16px;
+    color: var(--text-mid);
+    max-width: 640px;
+    line-height: 1.7;
+    margin-bottom: 48px;
+  }
+  .divider {
+    border: none;
+    border-top: 1px solid var(--wire);
+    margin: 0;
+  }
+
+  /* ── FEATURES GRID ── */
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    background: var(--wire);
+    border: 1px solid var(--wire);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .feature-card {
+    background: var(--steel-2);
+    padding: 28px 24px;
+    transition: background 0.15s;
+  }
+  .feature-card:hover { background: var(--steel-3); }
+  .feature-icon {
+    font-size: 22px;
+    margin-bottom: 14px;
+  }
+  .feature-card h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: #ddeef8;
+    margin-bottom: 8px;
+  }
+  .feature-card p {
+    font-size: 13px;
+    color: var(--text-mid);
+    line-height: 1.6;
+  }
+
+  /* ── HOW IT WORKS ── */
+  .steps {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    position: relative;
+  }
+  .steps::before {
+    content: '';
+    position: absolute;
+    left: 19px;
+    top: 20px;
+    bottom: 20px;
+    width: 1px;
+    background: var(--wire);
+  }
+  .step {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+    padding: 20px 0;
+    opacity: 0;
+    transform: translateX(-16px);
+    animation: stepIn 0.4s ease forwards;
+  }
+  .step:nth-child(1) { animation-delay: 0.1s; }
+  .step:nth-child(2) { animation-delay: 0.2s; }
+  .step:nth-child(3) { animation-delay: 0.3s; }
+  .step:nth-child(4) { animation-delay: 0.4s; }
+  .step:nth-child(5) { animation-delay: 0.5s; }
+  .step:nth-child(6) { animation-delay: 0.6s; }
+  @keyframes stepIn { to { opacity: 1; transform: none; } }
+  .step-num {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    background: var(--steel-3);
+    border: 1px solid var(--wire);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent-hi);
+    flex-shrink: 0;
+    z-index: 1;
+  }
+  .step-body { padding-top: 6px; }
+  .step-body h4 { font-size: 15px; font-weight: 600; color: #ddeef8; margin-bottom: 4px; }
+  .step-body p  { font-size: 13px; color: var(--text-mid); line-height: 1.6; }
+
+  /* ── XML SPEC TABLE ── */
+  .xml-block {
+    background: #070f18;
+    border: 1px solid var(--wire);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .xml-block-hdr {
+    background: var(--steel-2);
+    border-bottom: 1px solid var(--wire);
+    padding: 8px 16px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-mid);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .xml-block-hdr .dot { width: 7px; height: 7px; border-radius: 50%; }
+  .xml-block pre {
+    padding: 20px;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.7;
+    color: #8ab0c8;
+    overflow-x: auto;
+  }
+  .xml-block pre .tag   { color: #6ab8d8; }
+  .xml-block pre .attr  { color: #e8b050; }
+  .xml-block pre .val   { color: #4cd4a4; }
+  .xml-block pre .cmt   { color: #3d5a6e; font-style: italic; }
+  .xml-block pre .key   { color: #c07a8a; }
+
+  /* ── TECH STACK ── */
+  .tech-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+  .tech-card {
+    background: var(--steel-2);
+    border: 1px solid var(--wire);
+    border-radius: 4px;
+    padding: 20px 18px;
+    transition: border-color 0.15s, transform 0.1s;
+  }
+  .tech-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .tech-name { font-size: 14px; font-weight: 600; color: #ddeef8; margin-bottom: 4px; }
+  .tech-role { font-size: 12px; color: var(--text-mid); }
+  .tech-ver  { font-family: var(--mono); font-size: 10px; color: var(--text-faint); margin-top: 6px; }
+
+  /* ── IEC BOX ── */
+  .iec-box {
+    background: linear-gradient(135deg, rgba(26,110,168,0.12), rgba(13,27,42,0.6));
+    border: 1px solid rgba(26,110,168,0.3);
+    border-radius: 6px;
+    padding: 32px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    align-items: center;
+  }
+  .iec-box h3 { font-size: 20px; color: #ddeef8; font-weight: 600; margin-bottom: 10px; }
+  .iec-box p  { font-size: 14px; color: var(--text-mid); line-height: 1.7; }
+  .sil-table  { display: grid; grid-template-columns: auto 1fr auto; gap: 0; border: 1px solid var(--wire); border-radius: 3px; overflow: hidden; font-family: var(--mono); font-size: 12px; }
+  .sil-row    { display: contents; }
+  .sil-row > * { padding: 7px 12px; border-bottom: 1px solid var(--wire); }
+  .sil-row:last-child > * { border-bottom: none; }
+  .sil-row:nth-child(even) > * { background: rgba(255,255,255,0.02); }
+  .sil-row .sil-lv   { color: var(--accent-hi); font-weight: 700; }
+  .sil-row .sil-pfd  { color: var(--text-mid); }
+  .sil-row .sil-chip {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 2px;
+    font-weight: 700;
+    text-align: center;
+  }
+  .sil1 { background: rgba(192,128,32,0.2); color: #e8b050; }
+  .sil2 { background: rgba(29,158,112,0.2); color: #4cd4a4; }
+  .sil3 { background: rgba(26,110,168,0.2); color: var(--accent-hi); }
+  .sil4 { background: rgba(150,80,200,0.2); color: #b880e8; }
+
+  /* ── FOOTER ── */
+  footer {
+    position: relative;
+    z-index: 1;
+    border-top: 1px solid var(--wire);
+    padding: 36px 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  footer .f-brand { font-family: var(--mono); font-size: 12px; color: var(--text-faint); }
+  footer .f-links { display: flex; gap: 24px; }
+  footer .f-links a { font-size: 12px; color: var(--text-faint); text-decoration: none; transition: color 0.15s; }
+  footer .f-links a:hover { color: var(--accent-hi); }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: none; }
+  }
+  .hero-eyebrow { animation: fadeUp 0.5s ease 0.1s both; }
+  .hero h1      { animation: fadeUp 0.5s ease 0.2s both; }
+  .hero-sub     { animation: fadeUp 0.5s ease 0.3s both; }
+  .hero-badges  { animation: fadeUp 0.5s ease 0.35s both; }
+  .hero-cta     { animation: fadeUp 0.5s ease 0.4s both; }
+  .hero-visual  { animation: fadeUp 0.6s ease 0.5s both; }
+</style>
+</head>
 <body>
 
-<h1>My First Heading</h1>
+<!-- NAV -->
+<nav>
+  <a class="nav-brand" href="#">
+    <div class="icon">🧮</div>
+    <span class="name">pfd-triple-calc</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#how">How it works</a></li>
+    <li><a href="#library">XML Library</a></li>
+    <li><a href="#tech">Tech Stack</a></li>
+    <li><a href="https://github.com" target="_blank">GitHub →</a></li>
+  </ul>
+</nav>
 
-<p>My first paragraph.</p>
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-eyebrow">IEC 61508 · ISA-84 · Functional Safety</div>
+  <h1>PFD <span>Triple</span><br>Calculator</h1>
+  <p class="hero-sub">
+    A browser-based analytical PFD calculator for Safety Instrumented Functions.
+    Runs three independent subsystem calculations — Sensor, Logic, Final Element —
+    and combines them into a system-level SIL classification. No server required.
+  </p>
+  <div class="hero-badges">
+    <span class="badge badge-blue">PyPFD Engine</span>
+    <span class="badge badge-blue">Pyodide (Python in browser)</span>
+    <span class="badge badge-green">IEC 61508 / ISA-84</span>
+    <span class="badge badge-green">RBD &amp; N2595 Methods</span>
+    <span class="badge badge-amber">MooN Architectures</span>
+    <span class="badge badge-amber">Partial Stroke Test</span>
+    <span class="badge badge-gray">PDF Export</span>
+    <span class="badge badge-gray">XML Component Library</span>
+    <span class="badge badge-gray">A4 Landscape</span>
+  </div>
+  <div class="hero-cta">
+    <a href="PFD_Triple_Calculator.html" class="btn-primary">▶ Open Calculator</a>
+    <a href="pfd_library.xml" class="btn-outline">📄 Sample XML Library</a>
+    <a href="https://github.com" target="_blank" class="btn-outline">⭐ Star on GitHub</a>
+  </div>
+
+  <!-- Mock UI screenshot -->
+  <div class="hero-visual">
+    <div class="screen-frame">
+      <div class="screen-bar">
+        <span class="s-title">🧮 Analytical PFD — Triple Calculation IEC 61508 / ISA-84</span>
+        <span class="s-meta">PyPFD · RBD &amp; N2595 · by Rafael Rocha</span>
+      </div>
+      <div class="screen-toolbar">
+        <span class="s-btn save">💾 Save JSON</span>
+        <span class="s-btn">📂 Load JSON</span>
+        <span class="s-btn pdf">🖨 Export PDF</span>
+        <span class="s-lib">Library XML: https://…/pfd_library.xml &nbsp;[⬇ Load] &nbsp;✓ 15 components loaded</span>
+      </div>
+      <div class="screen-panels">
+        <div class="s-panel">
+          <div class="s-panel-hdr">CALCULATION 1 <span class="s-badge">SENSOR</span></div>
+          <div class="s-sec">Identification</div>
+          <div class="s-input text"></div>
+          <div class="s-input text" style="opacity:0.5;margin-bottom:4px"></div>
+          <div class="s-sec">Failure Rates</div>
+          <div class="s-row"><span class="s-label">λ<sub>du</sub></span><div class="s-input"></div></div>
+          <div class="s-row"><span class="s-label">λ<sub>dd</sub></span><div class="s-input"></div></div>
+          <div class="s-sec">MooN Architecture</div>
+          <div class="s-row"><span class="s-label">M (votes)</span><div class="s-input"></div></div>
+          <div class="s-row"><span class="s-label">N (channels)</span><div class="s-input"></div></div>
+          <div class="s-result">
+            <div class="r-label">PFD<sub>avg</sub> RBD</div>
+            <div class="r-val">3.84e-3</div>
+          </div>
+        </div>
+        <div class="s-panel">
+          <div class="s-panel-hdr">CALCULATION 2 <span class="s-badge">LOGIC</span></div>
+          <div class="s-sec">Identification</div>
+          <div class="s-input text"></div>
+          <div class="s-input text" style="opacity:0.5;margin-bottom:4px"></div>
+          <div class="s-sec">Failure Rates</div>
+          <div class="s-row"><span class="s-label">λ<sub>du</sub></span><div class="s-input"></div></div>
+          <div class="s-row"><span class="s-label">λ<sub>dd</sub></span><div class="s-input"></div></div>
+          <div class="s-sec">MooN Architecture</div>
+          <div class="s-row"><span class="s-label">M (votes)</span><div class="s-input"></div></div>
+          <div class="s-row"><span class="s-label">N (channels)</span><div class="s-input"></div></div>
+          <div class="s-result">
+            <div class="r-label">PFD<sub>avg</sub> RBD</div>
+            <div class="r-val">2.19e-3</div>
+          </div>
+        </div>
+        <div class="s-panel">
+          <div class="s-panel-hdr">CALCULATION 3 <span class="s-badge">FINAL ELEMENT</span></div>
+          <div class="s-sec">Identification</div>
+          <div class="s-input text"></div>
+          <div class="s-input text" style="opacity:0.5;margin-bottom:4px"></div>
+          <div class="s-sec">Failure Rates</div>
+          <div class="s-row"><span class="s-label">λ<sub>du</sub></span><div class="s-input"></div></div>
+          <div class="s-row"><span class="s-label">λ<sub>dd</sub></span><div class="s-input"></div></div>
+          <div class="s-sec">MooN Architecture</div>
+          <div class="s-row"><span class="s-label">M (votes)</span><div class="s-input"></div></div>
+          <div class="s-row"><span class="s-label">N (channels)</span><div class="s-input"></div></div>
+          <div class="s-result">
+            <div class="r-label">PFD<sub>avg</sub> RBD</div>
+            <div class="r-val">4.60e-3</div>
+          </div>
+        </div>
+      </div>
+      <div class="screen-summary">
+        <div class="ss-label">SIF Summary</div>
+        <div class="ss-items">
+          <div class="ss-item"><div class="ss-name">Calculation 1 PFDavg</div><div class="ss-val">3.84e-3</div></div>
+          <div class="ss-item"><div class="ss-name">Calculation 2 PFDavg</div><div class="ss-val">2.19e-3</div></div>
+          <div class="ss-item"><div class="ss-name">Calculation 3 PFDavg</div><div class="ss-val">4.60e-3</div></div>
+        </div>
+        <div class="ss-sys"><div class="ss-sys-val">1.06e-2</div><div class="ss-sil">SIL 1</div></div>
+        <div class="ss-bar">
+          <div class="ss-bar-title">PFD Contribution</div>
+          <div class="ss-bar-track">
+            <div class="ss-seg1"></div>
+            <div class="ss-seg2"></div>
+            <div class="ss-seg3"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- FEATURES -->
+<section id="features">
+  <div class="section">
+    <div class="section-eyebrow">Capabilities</div>
+    <h2>Everything you need for<br>SIF PFD analysis</h2>
+    <p class="section-lead">Built on the PyPFD library by Rafael Rocha, running entirely in the browser via Pyodide. No installation, no backend, no data leaves your machine.</p>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">🔢</div>
+        <h3>Triple Independent Calculations</h3>
+        <p>Three dedicated panels for Sensor, Logic Solver and Final Element. Each computes PFD<sub>avg</sub> independently using both RBD and IEC 61508-N2595 methods.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🏗️</div>
+        <h3>MooN Architecture Support</h3>
+        <p>Configure M-out-of-N voting for any combination from 1oo1 to 9oo9. Supports 1oo1, 1oo2, 2oo2, 2oo3 and more, with automatic validation of M ≤ N.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔬</div>
+        <h3>Partial Stroke Testing</h3>
+        <p>Enable partial test mode per subsystem. Configure the manual test interval (MT) and partial test coverage (PTC) to model real-world proof test strategies.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📚</div>
+        <h3>XML Component Library</h3>
+        <p>Load a shared XML library of pre-configured components over HTTP. Dropdowns auto-filter by subsystem type — Sensor, Logic, Final Element. Populate all fields with one click.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📊</div>
+        <h3>System PFD &amp; SIL Classification</h3>
+        <p>Series combination of all three subsystems gives the total system PFD<sub>avg</sub>. Automatic SIL classification (SIL 1–4) with a visual contribution bar chart.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🖨️</div>
+        <h3>PDF &amp; JSON Export</h3>
+        <p>Export the complete A4 landscape report as a high-resolution PDF (3× scale via html2canvas + jsPDF). Save and reload project state as JSON for later use.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🏭</div>
+        <h3>Component Identification</h3>
+        <p>Each calculation stores Name, Manufacturer, Model and Description — filling the gap between raw failure rate data and real equipment traceability.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">⚙️</div>
+        <h3>CCF Factor Inputs</h3>
+        <p>Configure independent β and β<sub>d</sub> Common Cause Failure factors per subsystem to account for dependent failures in redundant architectures.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🖥️</div>
+        <h3>Zero-Dependency Browser App</h3>
+        <p>Python engine loaded via Pyodide (WebAssembly). No server, no build step, no framework. Open the HTML file — it works. Deployable to any static host or GitHub Pages.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- HOW IT WORKS -->
+<section id="how">
+  <div class="section">
+    <div class="section-eyebrow">Workflow</div>
+    <h2>How to use it</h2>
+    <p class="section-lead">From opening the file to an exported PDF report in a few steps.</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:start">
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h4>Open the HTML file</h4>
+            <p>Open <code style="font-family:var(--mono);font-size:12px;color:var(--accent-hi)">PFD_Triple_Calculator.html</code> in any modern browser. Pyodide will automatically download and install the PyPFD engine in the background.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h4>Load the component library (optional)</h4>
+            <p>Paste the URL of a <code style="font-family:var(--mono);font-size:12px;color:var(--accent-hi)">pfd_library.xml</code> file into the toolbar and click Load. The dropdowns in each panel will populate with pre-configured components.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h4>Fill in each subsystem</h4>
+            <p>Enter Name, Manufacturer, Model and Description for identification. Input failure rates (λ<sub>du</sub>, λ<sub>dd</sub>), test interval, MTTR, CCF factors and MooN architecture — or select from the library dropdown.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <h4>Calculate PFD per subsystem</h4>
+            <p>Click <strong>▶ Calculate PFD</strong> in each panel. The Python engine runs the RBD and N2595 algorithms and displays PFD<sub>avg</sub> for that subsystem.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">5</div>
+          <div class="step-body">
+            <h4>Review the SIF Summary</h4>
+            <p>The bottom bar shows all three PFD<sub>avg</sub> values, the series combination system PFD<sub>avg</sub>, the resulting SIL classification, and the proportional contribution bar chart.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">6</div>
+          <div class="step-body">
+            <h4>Export</h4>
+            <p>Click <strong>🖨 Export PDF</strong> to download a high-resolution A4 landscape PDF. Use <strong>💾 Save JSON</strong> to save the project state and reload it later.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- IEC box -->
+      <div>
+        <div class="iec-box">
+          <div>
+            <h3>Standards compliance</h3>
+            <p>Calculations follow the simplified analytical formulas from <strong>IEC 61508</strong> and the tabular method from <strong>ISA-TR84.00.02</strong> (N2595), implemented in the open-source <strong>PyPFD</strong> library.</p>
+            <br>
+            <p style="font-size:13px;color:var(--text-faint)">Both PFD<sub>avg</sub> values (RBD and N2595) are shown for cross-verification. The system PFD uses series combination: PFD<sub>sys</sub> = Σ PFD<sub>i</sub>.</p>
+          </div>
+          <div>
+            <div class="sil-table">
+              <div class="sil-row">
+                <span class="sil-lv">SIL</span>
+                <span style="color:var(--text-mid);padding:7px 12px;border-bottom:1px solid var(--wire)">PFD<sub>avg</sub> range</span>
+                <span style="padding:7px 12px;border-bottom:1px solid var(--wire)"></span>
+              </div>
+              <div class="sil-row">
+                <span class="sil-lv" style="background:var(--steel-2);padding:7px 12px;border-bottom:1px solid var(--wire)">SIL 1</span>
+                <span class="sil-pfd" style="background:var(--steel-2);padding:7px 12px;border-bottom:1px solid var(--wire)">10⁻² ≤ PFD &lt; 10⁻¹</span>
+                <span style="background:var(--steel-2);padding:7px 12px;border-bottom:1px solid var(--wire)"><span class="sil-chip sil1">SIL 1</span></span>
+              </div>
+              <div class="sil-row">
+                <span class="sil-lv" style="padding:7px 12px;border-bottom:1px solid var(--wire)">SIL 2</span>
+                <span class="sil-pfd" style="padding:7px 12px;border-bottom:1px solid var(--wire)">10⁻³ ≤ PFD &lt; 10⁻²</span>
+                <span style="padding:7px 12px;border-bottom:1px solid var(--wire)"><span class="sil-chip sil2">SIL 2</span></span>
+              </div>
+              <div class="sil-row">
+                <span class="sil-lv" style="background:var(--steel-2);padding:7px 12px;border-bottom:1px solid var(--wire)">SIL 3</span>
+                <span class="sil-pfd" style="background:var(--steel-2);padding:7px 12px;border-bottom:1px solid var(--wire)">10⁻⁴ ≤ PFD &lt; 10⁻³</span>
+                <span style="background:var(--steel-2);padding:7px 12px;border-bottom:1px solid var(--wire)"><span class="sil-chip sil3">SIL 3</span></span>
+              </div>
+              <div class="sil-row">
+                <span class="sil-lv" style="padding:7px 12px">SIL 4</span>
+                <span class="sil-pfd" style="padding:7px 12px">10⁻⁵ ≤ PFD &lt; 10⁻⁴</span>
+                <span style="padding:7px 12px"><span class="sil-chip sil4">SIL 4</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- XML LIBRARY -->
+<section id="library">
+  <div class="section">
+    <div class="section-eyebrow">Component Library</div>
+    <h2>XML library format</h2>
+    <p class="section-lead">Host a <code style="font-family:var(--mono);font-size:13px;color:var(--accent-hi)">pfd_library.xml</code> file anywhere accessible over HTTP — GitHub raw files, GitHub Pages, or any static server. The calculator fetches and parses it at runtime.</p>
+
+    <div class="xml-block">
+      <div class="xml-block-hdr">
+        <span class="dot" style="background:#e07070"></span>
+        <span class="dot" style="background:#e8b050"></span>
+        <span class="dot" style="background:#4cd4a4"></span>
+        <span style="margin-left:8px">pfd_library.xml</span>
+      </div>
+      <pre><span class="cmt">&lt;?xml version="1.0" encoding="UTF-8"?&gt;</span>
+<span class="tag">&lt;pfd_library</span> <span class="attr">version</span>=<span class="val">"2.0"</span> <span class="attr">standard</span>=<span class="val">"IEC 61508 / ISA-84"</span><span class="tag">&gt;</span>
+
+  <span class="tag">&lt;category</span> <span class="attr">type</span>=<span class="val">"sensor"</span><span class="tag">&gt;</span>          <span class="cmt">&lt;!-- sensor | logic | final_element --&gt;</span>
+    <span class="tag">&lt;component</span> <span class="attr">id</span>=<span class="val">"S01"</span><span class="tag">&gt;</span>
+      <span class="tag">&lt;name&gt;</span>Pressure Transmitter (1oo2)<span class="tag">&lt;/name&gt;</span>
+      <span class="tag">&lt;manufacturer&gt;</span>Emerson<span class="tag">&lt;/manufacturer&gt;</span>
+      <span class="tag">&lt;model&gt;</span>Rosemount 3051S<span class="tag">&lt;/model&gt;</span>
+      <span class="tag">&lt;description&gt;</span>Redundant PT, 1oo2 voting<span class="tag">&lt;/description&gt;</span>
+      <span class="tag">&lt;ldu&gt;</span>1.0e-6<span class="tag">&lt;/ldu&gt;</span>            <span class="cmt">&lt;!-- dangerous undetected rate (h⁻¹) --&gt;</span>
+      <span class="tag">&lt;ldd&gt;</span>2.5e-5<span class="tag">&lt;/ldd&gt;</span>            <span class="cmt">&lt;!-- dangerous detected rate  (h⁻¹) --&gt;</span>
+      <span class="tag">&lt;TI&gt;</span>8760<span class="tag">&lt;/TI&gt;</span>              <span class="cmt">&lt;!-- test interval (h) --&gt;</span>
+      <span class="tag">&lt;MTTR&gt;</span>8<span class="tag">&lt;/MTTR&gt;</span>             <span class="cmt">&lt;!-- mean time to restore (h) --&gt;</span>
+      <span class="tag">&lt;beta&gt;</span>5<span class="tag">&lt;/beta&gt;</span>             <span class="cmt">&lt;!-- CCF factor β (%) --&gt;</span>
+      <span class="tag">&lt;betad&gt;</span>5<span class="tag">&lt;/betad&gt;</span>           <span class="cmt">&lt;!-- CCF factor βd (%) --&gt;</span>
+      <span class="tag">&lt;M&gt;</span>1<span class="tag">&lt;/M&gt;</span>                  <span class="cmt">&lt;!-- votes required --&gt;</span>
+      <span class="tag">&lt;N&gt;</span>2<span class="tag">&lt;/N&gt;</span>                  <span class="cmt">&lt;!-- total channels --&gt;</span>
+      <span class="tag">&lt;partialTest&gt;</span>false<span class="tag">&lt;/partialTest&gt;</span>  <span class="cmt">&lt;!-- true | false --&gt;</span>
+      <span class="tag">&lt;MT&gt;</span>87600<span class="tag">&lt;/MT&gt;</span>             <span class="cmt">&lt;!-- manual test interval (h) --&gt;</span>
+      <span class="tag">&lt;ptc&gt;</span>0<span class="tag">&lt;/ptc&gt;</span>              <span class="cmt">&lt;!-- partial test coverage (%) --&gt;</span>
+    <span class="tag">&lt;/component&gt;</span>
+  <span class="tag">&lt;/category&gt;</span>
+
+  <span class="tag">&lt;category</span> <span class="attr">type</span>=<span class="val">"logic"</span><span class="tag">&gt;</span> <span class="cmt">&lt;!-- ... --&gt;</span> <span class="tag">&lt;/category&gt;</span>
+  <span class="tag">&lt;category</span> <span class="attr">type</span>=<span class="val">"final_element"</span><span class="tag">&gt;</span> <span class="cmt">&lt;!-- ... --&gt;</span> <span class="tag">&lt;/category&gt;</span>
+
+<span class="tag">&lt;/pfd_library&gt;</span></pre>
+    </div>
+
+    <div style="margin-top:24px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+      <div style="background:var(--steel-2);border:1px solid var(--wire);border-radius:4px;padding:18px 16px">
+        <div style="font-family:var(--mono);font-size:10px;color:var(--accent-hi);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">category types</div>
+        <code style="font-family:var(--mono);font-size:12px;color:#4cd4a4">sensor</code><br>
+        <code style="font-family:var(--mono);font-size:12px;color:#4cd4a4">logic</code><br>
+        <code style="font-family:var(--mono);font-size:12px;color:#4cd4a4">final_element</code>
+        <p style="font-size:12px;color:var(--text-mid);margin-top:8px">Each maps to the corresponding calculator panel automatically.</p>
+      </div>
+      <div style="background:var(--steel-2);border:1px solid var(--wire);border-radius:4px;padding:18px 16px">
+        <div style="font-family:var(--mono);font-size:10px;color:var(--accent-hi);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">hosting options</div>
+        <p style="font-size:12px;color:var(--text-mid);line-height:1.7">GitHub raw file URL, GitHub Pages, any HTTPS static server. CORS must allow the page origin. For local use, serve with <code style="font-family:var(--mono);color:#e8b050">python -m http.server</code>.</p>
+      </div>
+      <div style="background:var(--steel-2);border:1px solid var(--wire);border-radius:4px;padding:18px 16px">
+        <div style="font-family:var(--mono);font-size:10px;color:var(--accent-hi);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">sample library</div>
+        <p style="font-size:12px;color:var(--text-mid);line-height:1.7">The bundled <code style="font-family:var(--mono);color:#e8b050">pfd_library.xml</code> includes 15 components — 5 Sensors, 5 Logic Solvers, 5 Final Elements — with real manufacturer and model references.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- TECH STACK -->
+<section id="tech">
+  <div class="section">
+    <div class="section-eyebrow">Technology</div>
+    <h2>How it's built</h2>
+    <p class="section-lead">Pure HTML + CSS + JavaScript. The Python calculation engine is loaded as WebAssembly via Pyodide and runs entirely client-side.</p>
+
+    <div class="tech-grid">
+      <div class="tech-card">
+        <div class="tech-name">PyPFD</div>
+        <div class="tech-role">PFD calculation engine</div>
+        <div class="tech-ver">by Rafael Rocha · pip install PyPFD</div>
+        <p style="font-size:12px;color:var(--text-faint);margin-top:8px;line-height:1.6">Implements RBD and IEC 61508-N2595 PFD<sub>avg</sub> formulas for MooN architectures with and without partial testing.</p>
+      </div>
+      <div class="tech-card">
+        <div class="tech-name">Pyodide</div>
+        <div class="tech-role">Python in the browser</div>
+        <div class="tech-ver">v0.23.4 · via CDN</div>
+        <p style="font-size:12px;color:var(--text-faint);margin-top:8px;line-height:1.6">Compiles CPython to WebAssembly. Installs PyPFD via micropip at startup. No Python server required.</p>
+      </div>
+      <div class="tech-card">
+        <div class="tech-name">html2canvas</div>
+        <div class="tech-role">DOM-to-canvas renderer</div>
+        <div class="tech-ver">v1.4.1 · cdnjs</div>
+        <p style="font-size:12px;color:var(--text-faint);margin-top:8px;line-height:1.6">Captures the A4 sheet at 3× resolution for PDF export. Form fields are frozen to static spans before capture.</p>
+      </div>
+      <div class="tech-card">
+        <div class="tech-name">jsPDF</div>
+        <div class="tech-role">PDF generation</div>
+        <div class="tech-ver">v2.5.1 · cdnjs</div>
+        <p style="font-size:12px;color:var(--text-faint);margin-top:8px;line-height:1.6">Embeds the high-resolution canvas image into an A4 landscape PDF and triggers browser download.</p>
+      </div>
+    </div>
+
+    <div style="margin-top:32px;background:var(--steel-2);border:1px solid var(--wire);border-radius:4px;padding:24px;display:grid;grid-template-columns:1fr 1fr;gap:24px">
+      <div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--accent-hi);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Repository structure</div>
+        <pre style="font-family:var(--mono);font-size:12px;color:var(--text-mid);line-height:2"><span style="color:#4cd4a4">📄</span> PFD_Triple_Calculator.html   <span style="color:var(--text-faint)"># main application</span>
+<span style="color:#e8b050">📋</span> pfd_library.xml               <span style="color:var(--text-faint)"># sample component library</span>
+<span style="color:#8ab0c8">📖</span> index.html                    <span style="color:var(--text-faint)"># this documentation page</span>
+<span style="color:#8ab0c8">📝</span> README.md                     <span style="color:var(--text-faint)"># GitHub README</span></pre>
+      </div>
+      <div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--accent-hi);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Requirements</div>
+        <p style="font-size:13px;color:var(--text-mid);line-height:1.8">
+          ✔ Modern browser (Chrome 90+, Firefox 88+, Safari 15+)<br>
+          ✔ Internet connection (for Pyodide + CDN libraries on first load)<br>
+          ✔ No Node.js, no Python installation, no build step
+        </p>
+        <div style="margin-top:16px;font-family:var(--mono);font-size:10px;color:var(--accent-hi);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Local development</div>
+        <code style="font-family:var(--mono);font-size:12px;color:#4cd4a4;background:rgba(0,0,0,0.3);padding:6px 10px;border-radius:3px;display:block">python -m http.server 8080</code>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- FOOTER -->
+<footer>
+  <span class="f-brand">PFD Triple Calculator · Rafael Rocha · IEC 61508 / ISA-84</span>
+  <div class="f-links">
+    <a href="PFD_Triple_Calculator.html">Open App</a>
+    <a href="pfd_library.xml">XML Library</a>
+    <a href="https://github.com/rafarrocha/PyPFD" target="_blank">PyPFD on GitHub</a>
+    <a href="https://pyodide.org" target="_blank">Pyodide</a>
+  </div>
+</footer>
 
 </body>
 </html>
