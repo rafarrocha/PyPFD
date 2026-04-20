@@ -1158,39 +1158,27 @@
         reader.readAsText(file);
     }
 
-    // Load project from URL query param: ?project=<url-to-json>
-    // Inside the JSON, zones.sensor / zones.logic / zones.final can be:
-    //   - an object (inline states/links/subtitle) — normal
-    //   - a string URL — fetched and merged as zone data
-    async function loadProjectFromURL() {
+    // Load project from URL: ?data=<base64-encoded-JSON>
+    // All project data is passed inline, encoded in base64.
+    // Supports both standard base64 and URL-safe base64 (- _ instead of + /).
+    function loadProjectFromURL() {
         const params = new URLSearchParams(window.location.search);
-        const projectUrl = params.get('project');
-        if (!projectUrl) return;
+        let b64 = params.get('data');
+        if (!b64) return;
 
         try {
-            const resp = await fetch(projectUrl);
-            if (!resp.ok) throw new Error('HTTP ' + resp.status);
-            const content = await resp.json();
+            // URL-safe base64 → standard base64
+            b64 = b64.replace(/-/g, '+').replace(/_/g, '/');
+            // Pad if needed
+            while (b64.length % 4 !== 0) b64 += '=';
 
-            // Resolve zone URLs if any zone value is a string (URL)
-            if (content.zones) {
-                const fetches = [];
-                for (const key of GROUPS) {
-                    if (typeof content.zones[key] === 'string') {
-                        fetches.push(
-                            fetch(content.zones[key])
-                                .then(r => { if (!r.ok) throw new Error('Zone ' + key + ': HTTP ' + r.status); return r.json(); })
-                                .then(data => { content.zones[key] = data; })
-                        );
-                    }
-                }
-                if (fetches.length > 0) await Promise.all(fetches);
-            }
+            const jsonStr = decodeURIComponent(escape(atob(b64)));
+            const content = JSON.parse(jsonStr);
 
             applyProjectData(content);
-            console.log('Project loaded from URL: ' + projectUrl);
+            console.log('Project loaded from URL (inline base64)');
         } catch (err) {
-            console.error('Failed to load project from URL:', err);
+            console.error('Failed to load project from URL data:', err);
         }
     }
 
