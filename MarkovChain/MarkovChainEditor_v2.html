@@ -1,0 +1,2748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PFD calculator by Rafael Rocha</title>
+    <style>
+        :root {
+            --normal: #90EE90; --degraded: #ADD8E6; --failure: #FFCC99;
+            --dark: #2c3e50; --accent: #3498db; --bg: #f4f7f6; --sidebar: #ecf0f1;
+        }
+        * { box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; overflow: hidden; background: var(--bg); display: flex; flex-direction: column; height: 100vh; }
+
+        #header {
+            background: var(--dark); color: white;
+            padding: 6px 12px;
+            display: flex; justify-content: space-between; align-items: center;
+            z-index: 100; flex-shrink: 0; flex-wrap: wrap; gap: 6px;
+            min-height: 44px;
+        }
+        #header .title { font-weight: bold; font-size: clamp(11px, 1.5vw, 15px); white-space: nowrap; }
+        #header .controls { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+
+        #main-container { display: flex; flex: 1; position: relative; overflow: hidden; }
+        #sidebar-vars {
+            width: 300px; min-width: 220px; max-width: 420px;
+            background: var(--sidebar); border-right: 2px solid #bdc3c7;
+            padding: 12px; overflow-y: auto; flex-shrink: 0;
+            transition: width 0.25s, padding 0.25s, min-width 0.25s;
+            position: relative;
+        }
+        #sidebar-vars.collapsed { width: 0 !important; min-width: 0 !important; padding: 0 !important; overflow: hidden; border-right: none; }
+        #sidebar-vars h4 { margin: 0 0 6px 0; font-size: 13px; }
+
+        #sidebar-resize {
+            width: 5px; background: transparent; cursor: col-resize; flex-shrink: 0;
+            transition: background 0.15s;
+        }
+        #sidebar-resize:hover, #sidebar-resize.dragging { background: var(--accent); }
+
+        #sidebar-toggle {
+            position: absolute; top: 50%; left: 0; transform: translateY(-50%);
+            z-index: 300; width: 18px; height: 48px;
+            background: var(--dark); color: white; border: none; border-radius: 0 6px 6px 0;
+            cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center;
+            box-shadow: 2px 0 6px rgba(0,0,0,0.15); transition: background 0.15s;
+        }
+        #sidebar-toggle:hover { background: var(--accent); }
+
+        /* Canvas zones container */
+        #canvas-zones-container { display: flex; flex: 1; }
+        .canvas-zone { flex: 0.12; display: flex; flex-direction: column; border-right: 2px solid #ddd; position: relative; min-width: 36px; transition: flex 0.3s ease; cursor: pointer; overflow: hidden; }
+        .canvas-zone:last-child { border-right: none; }
+        .canvas-zone.active { box-shadow: inset 0 0 0 2px #e67e22; flex: 5; cursor: default; }
+        .canvas-zone:not(.active) .zone-canvas-wrap { overflow: hidden; }
+        .canvas-zone:not(.active) .zone-zoom-controls { display: none; }
+
+        .zone-resize-handle {
+            width: 5px; background: transparent; cursor: col-resize; flex-shrink: 0;
+            transition: background 0.15s; position: absolute; right: 0; top: 0; bottom: 0; z-index: 50;
+        }
+        .zone-resize-handle:hover, .zone-resize-handle.dragging { background: #e67e22; }
+
+        .zone-header { padding: 6px 8px; color: white; font-size: 11px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; gap: 6px; }
+        .zone-header button { background: rgba(255,255,255,0.25); color: white; border: 1px solid rgba(255,255,255,0.4); padding: 2px 8px; border-radius: 3px; cursor: pointer; font-size: 10px; }
+        .zone-header button:hover { background: rgba(255,255,255,0.4); }
+
+        .zone-sensor .zone-header { background: #2980b9; }
+        .zone-logic .zone-header { background: #8e44ad; }
+        .zone-final .zone-header { background: #27ae60; }
+
+        .zone-subtitle {
+            padding: 0 8px 4px 8px; font-size: 10px; flex-shrink: 0;
+        }
+        .zone-subtitle input {
+            width: 100%; border: none; border-bottom: 1px dashed rgba(255,255,255,0.5);
+            background: transparent; color: rgba(255,255,255,0.9); font-size: 10px;
+            font-style: italic; padding: 1px 4px; outline: none;
+        }
+        .zone-subtitle input::placeholder { color: rgba(255,255,255,0.5); }
+        .zone-sensor .zone-subtitle { background: #2471a3; }
+        .zone-logic .zone-subtitle { background: #7d3c98; }
+        .zone-final .zone-subtitle { background: #229954; }
+
+        .zone-canvas-wrap { flex: 1; position: relative; overflow: hidden; background: white; }
+        .zone-canvas-wrap canvas { display: block; cursor: crosshair; width: 100%; height: 100%; }
+
+        /* Zoom controls */
+        .zone-zoom-controls {
+            position: absolute; top: 10px; left: 10px; z-index: 200;
+            display: flex; flex-direction: column; gap: 4px;
+        }
+        .zoom-btn {
+            width: 32px; height: 32px; border-radius: 6px;
+            background: white; border: 1px solid #bdc3c7;
+            font-size: 18px; line-height: 1; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+            color: var(--dark); font-weight: bold;
+            transition: background 0.15s;
+        }
+        .zoom-btn:hover { background: var(--accent); color: white; border-color: var(--accent); }
+        .zoom-label {
+            background: white; border: 1px solid #bdc3c7; border-radius: 6px;
+            font-size: 11px; text-align: center; padding: 2px 4px;
+            color: var(--dark); font-weight: bold; min-width: 32px;
+        }
+
+        /* HUD */
+        #data-hud {
+            position: absolute; bottom: 12px; right: 12px;
+            background: rgba(255,255,255,0.98); border: 2px solid var(--dark);
+            padding: 10px; border-radius: 8px;
+            width: clamp(240px, 32vw, 460px);
+            max-height: 45vh; overflow-y: auto;
+            font-size: 11px;
+            transition: max-height 0.25s, padding 0.25s;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+            z-index: 150;
+        }
+        #data-hud.collapsed { max-height: 34px; overflow: hidden; padding-bottom: 4px; }
+        #hud-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 6px; cursor: pointer; user-select: none;
+        }
+        #hud-header h4 { margin: 0; font-size: 12px; }
+        #hud-toggle-btn {
+            background: none; border: 1px solid #bdc3c7; border-radius: 4px;
+            font-size: 14px; cursor: pointer; width: 22px; height: 22px;
+            display: flex; align-items: center; justify-content: center;
+            color: var(--dark); line-height: 1;
+        }
+
+        .var-table { width: 100%; margin-bottom: 6px; background: white; border-collapse: collapse; font-size: 11px; }
+        .var-table th, .var-table td { border: 1px solid #ddd; padding: 3px 4px; }
+        .var-table input { width: 100%; border: none; font-size: 11px; padding: 0; }
+        .var-table input[type=text].rate-val { font-family: 'Courier New', monospace; color: #2c3e50; }
+        .var-table input[type=text].desc-input { font-style: italic; color: #7f8c8d; font-size: 10px; }
+        .add-btn { background: var(--accent); color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; width: 100%; margin-bottom: 4px; font-size: 11px; }
+
+        .date-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+        .date-row label { font-size: 11px; font-weight: bold; white-space: nowrap; min-width: 60px; }
+        .date-row input[type=text] {
+            flex: 1; padding: 4px 6px; border: 1px solid #bdc3c7; border-radius: 4px;
+            font-size: 11px; font-family: 'Courier New', monospace; text-align: center;
+        }
+        .date-row input[type=text]:focus { outline: none; border-color: var(--accent); }
+
+        .test-card { background: white; border: 1px solid #ddd; border-radius: 6px; padding: 8px; margin-bottom: 8px; position: relative; }
+        .test-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+        .test-card-header input[type=text] { font-weight: bold; font-size: 12px; border: none; border-bottom: 1px dashed #bdc3c7; padding: 2px 4px; flex: 1; }
+        .test-card-header .del-btn { color: red; cursor: pointer; font-size: 14px; font-weight: bold; padding: 0 4px; }
+        .test-desc-input { width: 100%; font-size: 10px; font-style: italic; color: #7f8c8d; border: none; border-bottom: 1px dashed #e0e0e0; padding: 2px 4px; margin-bottom: 4px; }
+        .test-dates-input { width: 100%; font-size: 10px; font-family: 'Courier New', monospace; padding: 4px; border: 1px solid #ddd; border-radius: 3px; min-height: 28px; resize: vertical; }
+        .test-dates-hint { font-size: 9px; color: #7f8c8d; margin-top: 2px; }
+        .test-name-error { border-color: #e74c3c !important; background: #fdecea !important; }
+        .test-name-error-msg { font-size: 9px; color: #e74c3c; margin-top: 1px; }
+
+        .group-section { margin-bottom: 10px; border: 1px solid #d5dbdb; border-radius: 6px; overflow: hidden; }
+        .group-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 6px 10px; cursor: pointer; user-select: none;
+            font-size: 12px; font-weight: bold; color: white;
+        }
+        .group-header .group-toggle { font-size: 10px; transition: transform 0.2s; }
+        .group-header .group-toggle.collapsed { transform: rotate(-90deg); }
+        .group-body { padding: 8px; }
+        .group-body.collapsed { display: none; }
+        .group-sensor .group-header { background: #2980b9; }
+        .group-logic .group-header { background: #8e44ad; }
+        .group-final .group-header { background: #27ae60; }
+
+        .matrix-table { border-collapse: collapse; width: 100%; text-align: center; margin-bottom: 12px; }
+        .matrix-table td { border: 1px solid #ccc; padding: 3px; font-family: monospace; font-size: 10px; }
+        .vector-box { background: #2c3e50; color: #2ecc71; padding: 8px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 12px; word-break: break-all; }
+        .calc-result { margin-top: 8px; padding: 8px; background: #fdfce5; border: 1px solid #f1c40f; border-radius: 4px; font-weight: bold; }
+
+        .modal { position: fixed; background: white; border-radius: 8px; display: none; z-index: 2000; width: 240px; border: 1px solid #ccc; padding: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        .modal label { display: block; margin-top: 10px; font-size: 11px; font-weight: bold; }
+        .modal select, .modal input[type=text] { width: 100%; margin-top: 5px; padding: 5px; box-sizing: border-box; }
+
+        .btn-io { background: #7f8c8d; color: white; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px; }
+
+        #sidebar-right {
+            width: 290px; min-width: 200px; max-width: 420px;
+            background: #f8f4ff; border-left: 2px solid #bdc3c7;
+            padding: 14px 12px; overflow-y: auto; flex-shrink: 0;
+            transition: width 0.25s, padding 0.25s, min-width 0.25s;
+            position: relative;
+        }
+        #sidebar-right.collapsed { width: 0 !important; min-width: 0 !important; padding: 0 !important; overflow: hidden; border-left: none; }
+        #sidebar-right h4 { margin: 0 0 10px 0; font-size: 13px; color: #6c3483; }
+
+        #sidebar-right-resize {
+            width: 5px; background: transparent; cursor: col-resize; flex-shrink: 0;
+            transition: background 0.15s;
+        }
+        #sidebar-right-resize:hover, #sidebar-right-resize.dragging { background: #9b59b6; }
+
+        #sidebar-right-toggle {
+            position: absolute; top: 50%; right: 0; transform: translateY(-50%);
+            z-index: 300; width: 18px; height: 48px;
+            background: #6c3483; color: white; border: none; border-radius: 6px 0 0 6px;
+            cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center;
+            box-shadow: -2px 0 6px rgba(0,0,0,0.15); transition: background 0.15s;
+        }
+        #sidebar-right-toggle:hover { background: #9b59b6; }
+
+        .anal-var-row {
+            display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+            gap: 6px; margin-bottom: 7px;
+        }
+        .anal-var-row label {
+            font-size: 12px; font-weight: bold; color: #4a235a;
+            white-space: nowrap;
+        }
+        .anal-var-row .unit {
+            font-size: 10px; color: #7f8c8d; text-align: center;
+        }
+        .anal-var-row input[type=number] {
+            width: 100%; padding: 4px 5px; border: 1px solid #c39bd3;
+            border-radius: 4px; font-size: 12px; background: white;
+            text-align: right;
+        }
+        .anal-var-row input[type=number]:focus { outline: none; border-color: #9b59b6; }
+
+        .anal-section { margin-bottom: 14px; }
+        .anal-section-title {
+            font-size: 10px; font-weight: bold; text-transform: uppercase;
+            letter-spacing: 0.5px; color: #7d3c98; border-bottom: 1px solid #d7bde2;
+            padding-bottom: 4px; margin-bottom: 8px;
+        }
+
+        .anal-result-box {
+            background: linear-gradient(135deg, #4a235a, #6c3483);
+            color: white; border-radius: 8px; padding: 12px 14px;
+            margin-top: 12px; font-family: 'Courier New', monospace;
+        }
+        .anal-result-box .res-label { font-size: 10px; opacity: 0.8; margin-bottom: 2px; }
+        .anal-result-box .res-value { font-size: 20px; font-weight: bold; letter-spacing: 1px; }
+        .anal-result-box .res-sub { font-size: 10px; opacity: 0.7; margin-top: 4px; }
+
+        .anal-result-detail {
+            background: #f3e5f5; border: 1px solid #ce93d8; border-radius: 6px;
+            padding: 8px 10px; margin-top: 8px; font-size: 11px;
+        }
+        .anal-result-detail table { width: 100%; border-collapse: collapse; }
+        .anal-result-detail td { padding: 2px 4px; }
+        .anal-result-detail td:last-child { text-align: right; font-family: monospace; font-weight: bold; color: #6c3483; }
+
+        .calc-btn {
+            width: 100%; background: #6c3483; color: white; border: none;
+            padding: 8px; border-radius: 6px; cursor: pointer; font-weight: bold;
+            font-size: 13px; margin-top: 10px; transition: background 0.15s;
+        }
+        .calc-btn:hover { background: #9b59b6; }
+
+        .partial-test-row {
+            display: flex; align-items: center; gap: 8px;
+            margin: 10px 0 4px 0; padding: 7px 10px;
+            background: #ede7f6; border: 1px solid #ce93d8;
+            border-radius: 6px; cursor: pointer;
+        }
+        .partial-test-row input[type=checkbox] {
+            accent-color: #6c3483; width: 15px; height: 15px;
+            cursor: pointer; flex-shrink: 0;
+        }
+        .partial-test-row label {
+            font-size: 12px; font-weight: bold; color: #4a235a;
+            cursor: pointer; user-select: none;
+        }
+        #partial-test-fields {
+            overflow: hidden;
+            max-height: 0;
+            opacity: 0;
+            transition: max-height 0.3s ease, opacity 0.3s ease, margin 0.3s ease;
+            margin-top: 0;
+        }
+        #partial-test-fields.visible {
+            max-height: 120px;
+            opacity: 1;
+            margin-top: 4px;
+        }
+
+        .formula-hint {
+            font-size: 9px; color: #7f8c8d; font-style: italic;
+            margin-top: 6px; line-height: 1.4;
+        }
+
+        @media (max-width: 640px) {
+            #sidebar-vars { width: 0; min-width: 0; padding: 0; overflow: hidden; border-right: none; }
+            #sidebar-right { width: 0; min-width: 0; padding: 0; overflow: hidden; border-left: none; }
+            #data-hud { width: calc(100vw - 24px); right: 12px; left: 12px; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="header">
+    <div class="title">Markov Solver for PFD by Rafael Rocha</div>
+    <div class="controls">
+        <input type="text" id="projectTitle" placeholder="Titulo do Projeto" value="Sem titulo"
+            style="padding:5px 8px; border-radius:4px; border:1px solid #7f8c8d; background:#3d5166; color:white;
+                   font-size:12px; min-width:160px; max-width:240px; outline:none;"
+            title="Titulo do Projeto">
+        <button class="btn-io" onclick="saveProject()" data-i18n="save">&#x1F4BE; Salvar</button>
+        <button class="btn-io" onclick="document.getElementById('fileInput').click()" data-i18n="load">&#x1F4C2; Carregar</button>
+        <input type="file" id="fileInput" style="display:none" onchange="loadProject(event)">
+        <button style="background:#e67e22; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer; font-weight:bold; font-size:12px;" id="btn-calc-all" onclick="runAllMarkov()">&#x2699;&#xFE0F; Calcular Todos</button>
+        <button id="btn-lang" onclick="toggleLang()" style="background:#27ae60; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-weight:bold; font-size:12px; letter-spacing:1px;" title="Switch language / Trocar idioma">&#x1F310; EN</button>
+    </div>
+</div>
+
+<div id="main-container">
+    <div id="sidebar-vars">
+        <h4 data-i18n="simPeriod">Periodo de Simulacao</h4>
+        <div class="date-row">
+            <label data-i18n="startDate">Inicio:</label>
+            <input type="text" id="sim-start-date" value="01/01/25" placeholder="DD/MM/YY" maxlength="8"
+                   onchange="updateDataViews()">
+        </div>
+        <div class="date-row">
+            <label data-i18n="endDate">Fim:</label>
+            <input type="text" id="sim-end-date" value="01/01/26" placeholder="DD/MM/YY" maxlength="8"
+                   onchange="updateDataViews()">
+        </div>
+        <hr>
+        <div id="var-validation-msg" style="display:none; font-size:10px; color:#e74c3c; padding:4px 6px; background:#fdecea; border-radius:4px; margin-bottom:6px;"></div>
+
+        <div id="group-sensor-container"></div>
+        <div id="group-logic-container"></div>
+        <div id="group-final-container"></div>
+
+        <p style="font-size: 10px; color: #7f8c8d; margin-top: 10px;" data-i18n="delHint">* Clique em um item e aperte <b>DEL</b> para remover.</p>
+    </div>
+    <div id="sidebar-resize"></div>
+    <button id="sidebar-toggle" onclick="toggleSidebar()" title="Mostrar/Ocultar painel">&#x25C0;</button>
+
+    <div id="canvas-zones-container">
+        <!-- SENSOR ZONE -->
+        <div class="canvas-zone zone-sensor active" id="zone-sensor">
+            <div class="zone-header" onclick="focusZone('sensor')">
+                <span>Sensores</span>
+                <div style="display:flex;gap:3px;" onclick="event.stopPropagation()">
+                    <button onclick="exportZone('sensor')" title="Exportar seção">&#x2B07;</button>
+                    <button onclick="document.getElementById('zoneImport-sensor').click()" title="Importar seção">&#x2B06;</button>
+                    <input type="file" id="zoneImport-sensor" style="display:none" accept=".json" onchange="importZone('sensor',event)">
+                    <button onclick="runZoneMarkov('sensor')">Calc</button>
+                </div>
+            </div>
+            <div class="zone-subtitle">
+                <input type="text" id="subtitle-sensor" placeholder="Subtitulo..." oninput="zones.sensor.subtitle=this.value" onclick="event.stopPropagation()">
+            </div>
+            <div class="zone-canvas-wrap">
+                <div class="zone-zoom-controls" id="zoom-controls-sensor">
+                    <button class="zoom-btn" onclick="applyZoom('sensor', 0.2)" title="Aproximar">+</button>
+                    <div class="zoom-label" id="zoom-label-sensor">100%</div>
+                    <button class="zoom-btn" onclick="applyZoom('sensor', -0.2)" title="Afastar">&minus;</button>
+                    <button class="zoom-btn" onclick="resetView('sensor')" title="Resetar vista" style="font-size:13px">&#x2302;</button>
+                </div>
+                <canvas id="canvas-sensor"></canvas>
+            </div>
+        </div>
+
+        <!-- LOGIC SOLVER ZONE -->
+        <div class="canvas-zone zone-logic" id="zone-logic">
+            <div class="zone-header" onclick="focusZone('logic')">
+                <span>Logic Solver</span>
+                <div style="display:flex;gap:3px;" onclick="event.stopPropagation()">
+                    <button onclick="exportZone('logic')" title="Exportar seção">&#x2B07;</button>
+                    <button onclick="document.getElementById('zoneImport-logic').click()" title="Importar seção">&#x2B06;</button>
+                    <input type="file" id="zoneImport-logic" style="display:none" accept=".json" onchange="importZone('logic',event)">
+                    <button onclick="runZoneMarkov('logic')">Calc</button>
+                </div>
+            </div>
+            <div class="zone-subtitle">
+                <input type="text" id="subtitle-logic" placeholder="Subtitulo..." oninput="zones.logic.subtitle=this.value" onclick="event.stopPropagation()">
+            </div>
+            <div class="zone-canvas-wrap">
+                <div class="zone-zoom-controls" id="zoom-controls-logic">
+                    <button class="zoom-btn" onclick="applyZoom('logic', 0.2)" title="Aproximar">+</button>
+                    <div class="zoom-label" id="zoom-label-logic">100%</div>
+                    <button class="zoom-btn" onclick="applyZoom('logic', -0.2)" title="Afastar">&minus;</button>
+                    <button class="zoom-btn" onclick="resetView('logic')" title="Resetar vista" style="font-size:13px">&#x2302;</button>
+                </div>
+                <canvas id="canvas-logic"></canvas>
+            </div>
+        </div>
+
+        <!-- FINAL ELEMENTS ZONE -->
+        <div class="canvas-zone zone-final" id="zone-final">
+            <div class="zone-header" onclick="focusZone('final')">
+                <span>Elementos Finais</span>
+                <div style="display:flex;gap:3px;" onclick="event.stopPropagation()">
+                    <button onclick="exportZone('final')" title="Exportar seção">&#x2B07;</button>
+                    <button onclick="document.getElementById('zoneImport-final').click()" title="Importar seção">&#x2B06;</button>
+                    <input type="file" id="zoneImport-final" style="display:none" accept=".json" onchange="importZone('final',event)">
+                    <button onclick="runZoneMarkov('final')">Calc</button>
+                </div>
+            </div>
+            <div class="zone-subtitle">
+                <input type="text" id="subtitle-final" placeholder="Subtitulo..." oninput="zones.final.subtitle=this.value" onclick="event.stopPropagation()">
+            </div>
+            <div class="zone-canvas-wrap">
+                <div class="zone-zoom-controls" id="zoom-controls-final">
+                    <button class="zoom-btn" onclick="applyZoom('final', 0.2)" title="Aproximar">+</button>
+                    <div class="zoom-label" id="zoom-label-final">100%</div>
+                    <button class="zoom-btn" onclick="applyZoom('final', -0.2)" title="Afastar">&minus;</button>
+                    <button class="zoom-btn" onclick="resetView('final')" title="Resetar vista" style="font-size:13px">&#x2302;</button>
+                </div>
+                <canvas id="canvas-final"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div id="data-hud">
+        <div id="hud-header" onclick="toggleHUD()">
+            <h4 data-i18n="symbMatrix">&#x1F4CA; Matriz Simbolica</h4>
+            <button id="hud-toggle-btn" title="Minimizar/Expandir">&#x25BC;</button>
+        </div>
+        <div id="hud-body">
+            <div id="hud-zone-name" style="font-size:10px; color:#666; margin-bottom:4px;"></div>
+            <div id="matrix-ui"></div>
+            <h4 style="margin:8px 0 4px" data-i18n="stateVector">Vetor de Estados</h4>
+            <div id="status-vector-ui" class="vector-box">[]</div>
+            <div id="calc-output" class="calc-result" data-i18n="jsReady">Pronto</div>
+        </div>
+    </div>
+
+    <div id="sidebar-right-resize"></div>
+    <button id="sidebar-right-toggle" onclick="toggleRightSidebar()" title="Mostrar/Ocultar Calculo Analitico">&#x25B6;</button>
+    <div id="sidebar-right">
+
+        <h4 data-i18n="analPFD">&#x1F9EE; PFD Analitico</h4>
+
+        <div class="anal-section">
+            <div class="anal-section-title" data-i18n="failRates">Taxas de Falha</div>
+            <div class="anal-var-row">
+                <label>&lambda;<sub>du</sub></label>
+                <span class="unit">h&#x207B;&#xB9;</span>
+                <input type="number" id="an_ldu" value="1e-5" step="any">
+            </div>
+            <div class="anal-var-row">
+                <label>&lambda;<sub>dd</sub></label>
+                <span class="unit">h&#x207B;&#xB9;</span>
+                <input type="number" id="an_ldd" value="3e-4" step="any">
+            </div>
+        </div>
+
+        <div class="anal-section">
+            <div class="anal-section-title" data-i18n="times">Tempos</div>
+            <div class="anal-var-row">
+                <label>TI</label>
+                <span class="unit">h</span>
+                <input type="number" id="an_TI" value="8760" step="any" min="0">
+            </div>
+            <div class="anal-var-row">
+                <label>MTTR</label>
+                <span class="unit">h</span>
+                <input type="number" id="an_MTTR" value="40" step="any" min="0">
+            </div>
+        </div>
+
+        <div class="partial-test-row" onclick="togglePartialTest()">
+            <input type="checkbox" id="chk_partial_test" onchange="togglePartialTest()" onclick="event.stopPropagation()">
+            <label for="chk_partial_test" data-i18n="partialTest">Considerar teste parcial?</label>
+        </div>
+        <div id="partial-test-fields">
+            <div class="anal-var-row">
+                <label>MT</label>
+                <span class="unit">h</span>
+                <input type="number" id="an_MT" value="87600" step="any" min="0">
+            </div>
+            <div class="anal-var-row">
+                <label>PTC</label>
+                <span class="unit">%</span>
+                <input type="number" id="an_PTC" value="80" step="1" min="0" max="100">
+            </div>
+        </div>
+
+        <div class="anal-section">
+            <div class="anal-section-title" data-i18n="ccf">Fatores de Causa Comum (CCF)</div>
+            <div class="anal-var-row">
+                <label>&beta;</label>
+                <span class="unit">%</span>
+                <input type="number" id="an_beta" value="10" step="1" min="0" max="100">
+            </div>
+            <div class="anal-var-row">
+                <label>&beta;<sub>d</sub></label>
+                <span class="unit">%</span>
+                <input type="number" id="an_betad" value="10" step="1" min="0" max="100">
+            </div>
+        </div>
+
+        <div class="anal-section">
+            <div class="anal-section-title" data-i18n="moonArch">Arquitetura MooN</div>
+            <div class="anal-var-row">
+                <label data-i18n="mVotes">M (votos)</label>
+                <span class="unit">&mdash;</span>
+                <input type="number" id="an_M" value="1" step="1" min="1" max="9">
+            </div>
+            <div class="anal-var-row">
+                <label data-i18n="nChannels">N (canais)</label>
+                <span class="unit">&mdash;</span>
+                <input type="number" id="an_N" value="1" step="1" min="1" max="9">
+            </div>
+        </div>
+
+        <button class="calc-btn" onclick="calcAnalytical()" data-i18n="calcAnalPFD">&#x25B6; Calcular PFD Analitico</button>
+
+        <div id="anal-result" style="display:none">
+            <div class="anal-result-box">
+                <div class="res-label">PFD<sub>avg</sub></div>
+                <div class="res-value" id="anal-pfd_rbd-val">&mdash;</div>
+                <div class="res-sub" id="anal-pfd_rbd_sub-val">&mdash;</div>
+            </div>
+            <div class="anal-result-detail">
+                <table id="anal-detail-table"></table>
+            </div>
+        </div>
+
+        <div class="formula-hint" id="anal-formula-hint"></div>
+    </div>
+</div>
+
+<div id="linkModal" class="modal">
+    <label data-i18n="formula">Formula (Ex: &lambda;_du*PDC):</label>
+    <input type="text" id="m_l_val">
+    <button onclick="applyLinkEdits()" style="width:100%; background:var(--accent); color:white; border:none; padding:8px; cursor:pointer; margin-top:10px;" data-i18n="applyLink">Aplicar Link</button>
+</div>
+
+<div id="stateModal" class="modal">
+    <label data-i18n="stateName">Nome do Estado:</label>
+    <input type="text" id="m_s_name">
+    <label data-i18n="status">Status:</label>
+    <select id="m_s_status">
+        <option value="Normal">Normal</option>
+        <option value="Degraded">Degraded</option>
+        <option value="Failure">Failure</option>
+    </select>
+    <button onclick="applyStateEdits()" style="width:100%; background:var(--accent); color:white; border:none; padding:8px; cursor:pointer; margin-top:10px;" data-i18n="saveState">Salvar Estado</button>
+</div>
+
+<script>
+    // ===== i18n SYSTEM =====
+    const I18N = {
+        pt: {
+            rates: 'Taxas (Rates)',
+            tests: 'Testes',
+            name: 'Nome',
+            value: 'Valor',
+            addRate: '+ Add Taxa',
+            addTest: '+ Add Teste',
+            delHint: '* Clique em um item e aperte <b>DEL</b> para remover.',
+            symbMatrix: '&#x1F4CA; Matriz Simbolica',
+            stateVector: 'Vetor de Estados',
+            jsReady: 'Pronto',
+            jsCalc: 'Calculando...',
+            jsExecError: 'Erro na execucao.',
+            analPFD: '&#x1F9EE; PFD Analitico',
+            failRates: 'Taxas de Falha',
+            times: 'Tempos',
+            partialTest: 'Considerar teste parcial?',
+            ccf: 'Fatores de Causa Comum (CCF)',
+            moonArch: 'Arquitetura MooN',
+            mVotes: 'M (votos)',
+            nChannels: 'N (canais)',
+            calcAnalPFD: '&#x25B6 Calcular PFD Analitico',
+            formula: 'Formula (Ex: &#x03BB;_du*PDC):',
+            applyLink: 'Aplicar Link',
+            stateName: 'Nome do Estado:',
+            status: 'Status:',
+            saveState: 'Salvar Estado',
+            calcMarkov: '&#x2699;&#xFE0F Calcular Markov',
+            projectTitle: 'Titulo do Projeto',
+            save: '&#x1F4BE; Salvar',
+            load: '&#x1F4C2; Carregar',
+            mGtN: '&#x26A0;&#xFE0F M nao pode ser maior que N.',
+            invalidFile: 'Arquivo invalido ou corrompido.',
+            untitled: 'Sem titulo',
+            votacao: 'Votacao',
+            graphTitle: 'Analise no Tempo',
+            printBtn: 'Imprimir Relatorio',
+            errN2595: 'Erro: N2595 nao possui essa combinacao',
+            errPrefix: 'Erro: ',
+            noStates: 'Nenhum estado definido. Clique duplo no canvas para criar estados.',
+            failProb: 'Probabilidade de Falha',
+            timeH: 'Tempo (hora)',
+            date: 'Data',
+            probability: 'Probabilidade',
+            simPeriod: 'Periodo de Simulacao',
+            startDate: 'Inicio:',
+            endDate: 'Fim:',
+            valueFormula: 'Valor / Formula',
+            grpSensor: 'Sensores',
+            grpLogic: 'Logic Solver',
+            grpFinal: 'Elementos Finais',
+            descPlaceholder: 'Descricao...',
+            testNameConflict: 'Nome de teste conflita com nome de taxa: ',
+            calcAll: 'Calcular Todos',
+            calcAllTitle: 'PFD Combinado SIF',
+            pfdSensor: 'PFD Sensores',
+            pfdLogic: 'PFD Logic Solver',
+            pfdFinal: 'PFD Elem. Finais',
+            pfdTotal: 'PFD Total',
+            pfdAverage: 'PFD Medio',
+        },
+        en: {
+            rates: 'Rates',
+            tests: 'Tests',
+            name: 'Name',
+            value: 'Value',
+            addRate: '+ Add Rate',
+            addTest: '+ Add Test',
+            delHint: '* Click an item and press <b>DEL</b> to remove.',
+            symbMatrix: '&#x1F4CA; Symbolic Matrix',
+            stateVector: 'State Vector',
+            jsReady: 'Ready',
+            jsCalc: 'Calculating...',
+            jsExecError: 'Execution error.',
+            analPFD: '&#x1F9EE; Analytical PFD',
+            failRates: 'Failure Rates',
+            times: 'Times',
+            partialTest: 'Consider partial test?',
+            ccf: 'Common Cause Failure (CCF) Factors',
+            moonArch: 'MooN Architecture',
+            mVotes: 'M (votes)',
+            nChannels: 'N (channels)',
+            calcAnalPFD: '&#x25B6 Calculate Analytical PFD',
+            formula: 'Formula (e.g.: &#x03BB;_du*PDC):',
+            applyLink: 'Apply Link',
+            stateName: 'State Name:',
+            status: 'Status:',
+            saveState: 'Save State',
+            calcMarkov: '&#x2699;&#xFE0F Calculate Markov',
+            projectTitle: 'Project Title',
+            save: '&#x1F4BE; Save',
+            load: '&#x1F4C2; Load',
+            mGtN: '&#x26A0;&#xFE0F M cannot be greater than N.',
+            invalidFile: 'Invalid or corrupted file.',
+            untitled: 'Untitled',
+            votacao: 'Voting',
+            graphTitle: 'Time Analysis',
+            printBtn: 'Print Report',
+            errN2595: 'Error: N2595 does not support this combination',
+            errPrefix: 'Error: ',
+            noStates: 'No states defined. Double-click on canvas to create states.',
+            failProb: 'Failure Probability',
+            timeH: 'Time (hour)',
+            date: 'Date',
+            probability: 'Probability',
+            simPeriod: 'Simulation Period',
+            startDate: 'Start:',
+            endDate: 'End:',
+            valueFormula: 'Value / Formula',
+            grpSensor: 'Sensors',
+            grpLogic: 'Logic Solver',
+            grpFinal: 'Final Elements',
+            descPlaceholder: 'Description...',
+            testNameConflict: 'Test name conflicts with rate name: ',
+            calcAll: 'Calculate All',
+            calcAllTitle: 'Combined PFD SIF',
+            pfdSensor: 'PFD Sensors',
+            pfdLogic: 'PFD Logic Solver',
+            pfdFinal: 'PFD Final Elements',
+            pfdTotal: 'Total PFD',
+            pfdAverage: 'Average PFD',
+        }
+    };
+
+    let currentLang = 'en';
+
+    function t(key) {
+        return I18N[currentLang][key] || I18N['pt'][key] || key;
+    }
+
+    function applyLang() {
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            el.innerHTML = t(key);
+        });
+        const ptInput = document.getElementById('projectTitle');
+        if (ptInput) ptInput.placeholder = t('projectTitle');
+        const btnCalc = document.getElementById('btn-calc-all');
+        if (btnCalc) btnCalc.innerHTML = t('calcAll');
+        document.getElementById('btn-lang').textContent = currentLang === 'pt' ? '🌐 EN' : '🌐 PT';
+        renderVariables();
+    }
+
+    function toggleLang() {
+        currentLang = currentLang === 'pt' ? 'en' : 'pt';
+        applyLang();
+    }
+    // ===== END i18n =====
+
+    const GROUPS = ['sensor', 'logic', 'final'];
+    const GROUP_CSS = { sensor: 'group-sensor', logic: 'group-logic', final: 'group-final' };
+    let groupCollapsed = { sensor: false, logic: false, final: false };
+
+    let variables = {
+        rates: [
+            {n:'λ_du', v:'0.00001', desc:'', group:'sensor'},
+            {n:'λ_dd', v:'0.0003',  desc:'', group:'sensor'}
+        ],
+        testes: [
+            {n:'T1', dates:['01/07/25'], desc:'', group:'sensor'}
+        ],
+        startDate: '01/01/25',
+        endDate: '01/01/26'
+    };
+
+    let zones = {
+        sensor: { states: [], links: [], subtitle: '', selected: null, dragging: null, connecting: null, dragCP: null, mouse: {x:0,y:0}, viewX:0, viewY:0, viewScale:1, isPanning:false, panStart:{x:0,y:0}, panViewStart:{x:0,y:0} },
+        logic:  { states: [], links: [], subtitle: '', selected: null, dragging: null, connecting: null, dragCP: null, mouse: {x:0,y:0}, viewX:0, viewY:0, viewScale:1, isPanning:false, panStart:{x:0,y:0}, panViewStart:{x:0,y:0} },
+        final:  { states: [], links: [], subtitle: '', selected: null, dragging: null, connecting: null, dragCP: null, mouse: {x:0,y:0}, viewX:0, viewY:0, viewScale:1, isPanning:false, panStart:{x:0,y:0}, panViewStart:{x:0,y:0} }
+    };
+    let activeZoneKey = 'sensor';
+
+    const COLORS = { Normal: '#90EE90', Degraded: '#ADD8E6', Failure: '#FFCC99' };
+
+    function focusZone(zoneKey) {
+        if (activeZoneKey === zoneKey) return;
+        document.querySelectorAll('.canvas-zone').forEach(el => el.classList.remove('active'));
+        const zoneEl = document.getElementById('zone-' + zoneKey);
+        zoneEl.classList.add('active');
+        activeZoneKey = zoneKey;
+        updateDataViews();
+        // Continuously resize during the CSS transition so canvas stays sharp
+        let frame = 0;
+        function syncResize() {
+            resizeCanvases();
+            frame++;
+            if (frame < 20) requestAnimationFrame(syncResize);
+        }
+        requestAnimationFrame(syncResize);
+    }
+
+    function screenToWorld(x, y, zoneKey) {
+        const z = zones[zoneKey];
+        return { x: (x - z.viewX) / z.viewScale, y: (y - z.viewY) / z.viewScale };
+    }
+
+    function worldToScreen(x, y, zoneKey) {
+        const z = zones[zoneKey];
+        return { x: x * z.viewScale + z.viewX, y: y * z.viewScale + z.viewY };
+    }
+
+    function applyZoom(zoneKey, delta) {
+        const z = zones[zoneKey];
+        const canvas = document.getElementById('canvas-' + zoneKey);
+        const cx = canvas.width / 2, cy = canvas.height / 2;
+        const newScale = Math.max(0.15, Math.min(5, z.viewScale + delta));
+        z.viewX = cx - (cx - z.viewX) * (newScale / z.viewScale);
+        z.viewY = cy - (cy - z.viewY) * (newScale / z.viewScale);
+        z.viewScale = newScale;
+        updateZoomLabel(zoneKey);
+    }
+
+    function resetView(zoneKey) {
+        const z = zones[zoneKey];
+        z.viewX = 0; z.viewY = 0; z.viewScale = 1;
+        updateZoomLabel(zoneKey);
+    }
+
+    function updateZoomLabel(zoneKey) {
+        const label = document.getElementById('zoom-label-' + zoneKey);
+        if (label) label.textContent = Math.round(zones[zoneKey].viewScale * 100) + '%';
+    }
+
+    function setupZoneEvents(zoneKey) {
+        const canvas = document.getElementById('canvas-' + zoneKey);
+        const zone = document.getElementById('zone-' + zoneKey);
+        const z = zones[zoneKey];
+
+        function setActive() {
+            focusZone(zoneKey);
+        }
+
+        function getCanvasPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const sx = (e.clientX - rect.left) * scaleX;
+            const sy = (e.clientY - rect.top) * scaleY;
+            return screenToWorld(sx, sy, zoneKey);
+        }
+
+        canvas.addEventListener('mousedown', e => {
+            setActive();
+            const pos = getCanvasPos(e);
+            z.mouse = pos;
+            if (e.button === 1) {
+                z.isPanning = true; z.panStart = {x: e.clientX, y: e.clientY};
+                z.panViewStart = {x: z.viewX, y: z.viewY};
+                canvas.style.cursor = 'grab';
+                return;
+            }
+            const cp = z.links.find(l => z.selected === l && Math.hypot(l.cp.x-pos.x, l.cp.y-pos.y) < 15/z.viewScale);
+            if (cp) { z.dragCP = cp; return; }
+            const s = z.states.find(s => Math.hypot(s.x-pos.x, s.y-pos.y) < s.r);
+            if (e.button === 0) { z.dragging = s; z.selected = s || getLinkHit(pos.x, pos.y, zoneKey); }
+            else if (e.button === 2) { z.connecting = s ? {...s} : null; if(s) z.connecting = s; }
+        });
+
+        canvas.addEventListener('mousemove', e => {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const sx = (e.clientX - rect.left) * scaleX;
+            const sy = (e.clientY - rect.top) * scaleY;
+            if (z.isPanning) {
+                z.viewX = z.panViewStart.x + (e.clientX - z.panStart.x) * scaleX;
+                z.viewY = z.panViewStart.y + (e.clientY - z.panStart.y) * scaleY;
+                return;
+            }
+            const pos = screenToWorld(sx, sy, zoneKey);
+            z.mouse = pos;
+            if (z.dragging) { z.dragging.x = pos.x; z.dragging.y = pos.y; }
+            if (z.dragCP) { z.dragCP.cp.x = pos.x; z.dragCP.cp.y = pos.y; }
+        });
+
+        window.addEventListener('mouseup', e => {
+            if (z.isPanning) { z.isPanning = false; canvas.style.cursor = 'crosshair'; return; }
+            if (z.connecting) {
+                const target = z.states.find(s => Math.hypot(s.x-z.mouse.x, s.y-z.mouse.y) < s.r);
+                if (target && target !== z.connecting) {
+                    z.links.push({from: z.connecting.uid, to: target.uid, val: "0", cp: {x:(z.connecting.x+target.x)/2, y:(z.connecting.y+target.y)/2-40}});
+                    updateDataViews();
+                }
+            }
+            z.dragging = z.connecting = z.dragCP = null;
+        });
+
+        canvas.addEventListener('dblclick', e => {
+            setActive();
+            const pos = getCanvasPos(e);
+            const id = z.states.length ? Math.max(...z.states.map(s=>s.id))+1 : 1;
+            z.states.push({uid: Date.now(), x: pos.x, y: pos.y, id, value: "S"+id, status:'Normal', r:30});
+            updateDataViews();
+        });
+
+        canvas.addEventListener('click', e => {
+            setActive();
+            const pos = getCanvasPos(e);
+            const s = z.states.find(s => Math.hypot(s.x-pos.x, s.y-pos.y) < s.r);
+            const l = getLinkHit(pos.x, pos.y, zoneKey);
+            document.getElementById('linkModal').style.display = 'none';
+            document.getElementById('stateModal').style.display = 'none';
+            if (s) {
+                z.selected = s;
+                document.getElementById('m_s_name').value = s.value;
+                document.getElementById('m_s_status').value = s.status;
+                const m = document.getElementById('stateModal');
+                const canvasRect = canvas.getBoundingClientRect();
+                m.style.display = 'block';
+                m.style.left = (canvasRect.left + 10) + 'px';
+                m.style.top  = (canvasRect.top + 10) + 'px';
+            } else if (l) {
+                z.selected = l;
+                document.getElementById('m_l_val').value = l.val;
+                const m = document.getElementById('linkModal');
+                const canvasRect = canvas.getBoundingClientRect();
+                m.style.display = 'block';
+                m.style.left = (canvasRect.left + 10) + 'px';
+                m.style.top  = (canvasRect.top + 10) + 'px';
+            }
+        });
+
+        canvas.addEventListener('wheel', e => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+            const delta = e.deltaY < 0 ? 0.1 : -0.1;
+            const newScale = Math.max(0.15, Math.min(5, z.viewScale + delta));
+            z.viewX = mx - (mx - z.viewX) * (newScale / z.viewScale);
+            z.viewY = my - (my - z.viewY) * (newScale / z.viewScale);
+            z.viewScale = newScale;
+            updateZoomLabel(zoneKey);
+        }, { passive: false });
+
+        canvas.oncontextmenu = e => e.preventDefault();
+    }
+
+    function getLinkHit(x, y, zoneKey) {
+        const z = zones[zoneKey];
+        return z.links.find(l => {
+            const s1 = z.states.find(s=>s.uid===l.from), s2 = z.states.find(s=>s.uid===l.to);
+            if(!s1 || !s2) return false;
+            const mid = getBezierPoint(0.5, s1, l.cp, s2);
+            return Math.hypot(mid.x-x, mid.y-y) < 20/z.viewScale;
+        });
+    }
+
+    function getBezierPoint(t, p0, p1, p2) {
+        return { x: (1-t)**2*p0.x + 2*(1-t)*t*p1.x + t**2*p2.x, y: (1-t)**2*p0.y + 2*(1-t)*t*p1.y + t**2*p2.y };
+    }
+
+    function updateDataViews() {
+        const z = zones[activeZoneKey];
+        const sorted = [...z.states].sort((a,b)=>a.id-b.id);
+        let h = '<table class="matrix-table"><tr><th>ID</th>' + sorted.map(s=>`<th>${s.id}</th>`).join('') + '</tr>';
+        sorted.forEach(r => {
+            h += `<tr><td>${r.id}</td>`;
+            sorted.forEach(c => {
+                const l = z.links.find(li => li.from===r.uid && li.to===c.uid);
+                h += `<td>${l ? l.val : '0'}</td>`;
+            });
+            h += '</tr>';
+        });
+        document.getElementById('matrix-ui').innerHTML = h + '</table>';
+        document.getElementById('status-vector-ui').innerText = `[${sorted.map(s=>(s.status==='Failure'?0:1)).join(', ')}]`;
+        document.getElementById('hud-zone-name').innerHTML = '<strong>' + (activeZoneKey.charAt(0).toUpperCase() + activeZoneKey.slice(1)) + '</strong>';
+    }
+
+    let sidebarCollapsed = false;
+    function toggleSidebar() {
+        sidebarCollapsed = !sidebarCollapsed;
+        const sb = document.getElementById('sidebar-vars');
+        const btn = document.getElementById('sidebar-toggle');
+        const resizer = document.getElementById('sidebar-resize');
+        sb.classList.toggle('collapsed', sidebarCollapsed);
+        btn.textContent = sidebarCollapsed ? '▶' : '◀';
+        resizer.style.display = sidebarCollapsed ? 'none' : '';
+        setTimeout(resizeCanvases, 300);
+    }
+
+    // Sidebar drag-resize
+    (() => {
+        const resizer = document.getElementById('sidebar-resize');
+        const sidebar = document.getElementById('sidebar-vars');
+        let isResizing = false, startX = 0, startW = 0;
+        resizer.addEventListener('mousedown', e => {
+            isResizing = true; startX = e.clientX; startW = sidebar.offsetWidth;
+            resizer.classList.add('dragging');
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+        });
+        document.addEventListener('mousemove', e => {
+            if (!isResizing) return;
+            const newW = Math.max(220, Math.min(500, startW + (e.clientX - startX)));
+            sidebar.style.width = newW + 'px';
+            resizeCanvases();
+        });
+        document.addEventListener('mouseup', () => {
+            if (isResizing) { isResizing = false; resizer.classList.remove('dragging'); document.body.style.cursor = ''; document.body.style.userSelect = ''; }
+        });
+    })();
+
+    function toggleHUD() {
+        const hud = document.getElementById('data-hud');
+        const btn = document.getElementById('hud-toggle-btn');
+        hud.classList.toggle('collapsed');
+        btn.textContent = hud.classList.contains('collapsed') ? '▲' : '▼';
+    }
+
+    function resizeCanvases() {
+        for (const key of GROUPS) {
+            const canvas = document.getElementById('canvas-' + key);
+            const wrap = canvas.parentElement;
+            const w = wrap.clientWidth, h = wrap.clientHeight;
+            if (canvas.width !== w || canvas.height !== h) {
+                canvas.width = w;
+                canvas.height = h;
+            }
+        }
+    }
+
+    // Keyboard shortcuts
+    window.addEventListener('keydown', e => {
+        const z = zones[activeZoneKey];
+        if (e.key === "Delete" && z.selected) {
+            if (z.selected.uid) {
+                z.links = z.links.filter(l => l.from !== z.selected.uid && l.to !== z.selected.uid);
+                z.states = z.states.filter(s => s !== z.selected);
+            } else {
+                z.links = z.links.filter(l => l !== z.selected);
+            }
+            z.selected = null;
+            updateDataViews();
+        }
+        const PAN = 30;
+        if (e.key === 'ArrowLeft')  z.viewX += PAN;
+        if (e.key === 'ArrowRight') z.viewX -= PAN;
+        if (e.key === 'ArrowUp')    z.viewY += PAN;
+        if (e.key === 'ArrowDown')  z.viewY -= PAN;
+    });
+
+    function init() {
+        window.addEventListener('resize', resizeCanvases);
+        resizeCanvases();
+
+        for (const key of GROUPS) {
+            setupZoneEvents(key);
+        }
+
+        renderVariables();
+        updateDataViews();
+        requestAnimationFrame(renderLoop);
+
+        // Auto-load project from URL if ?project=<url> is present
+        loadProjectFromURL();
+    }
+
+    function saveProject() {
+        const title = document.getElementById('projectTitle').value || t('untitled');
+        variables.startDate = document.getElementById('sim-start-date').value;
+        variables.endDate   = document.getElementById('sim-end-date').value;
+        const partialTestChecked = document.getElementById('chk_partial_test').checked;
+        const analytical = {
+            ldu:  document.getElementById('an_ldu').value,
+            ldd:  document.getElementById('an_ldd').value,
+            TI:   document.getElementById('an_TI').value,
+            MTTR: document.getElementById('an_MTTR').value,
+            beta: document.getElementById('an_beta').value,
+            betad:document.getElementById('an_betad').value,
+            M:    document.getElementById('an_M').value,
+            N:    document.getElementById('an_N').value,
+            MT:   document.getElementById('an_MT').value,
+            PTC:  document.getElementById('an_PTC').value,
+            partialTestEnabled: partialTestChecked,
+        };
+        const leftSB  = document.getElementById('sidebar-vars');
+        const rightSB = document.getElementById('sidebar-right');
+        const view = { };
+        for (const key of GROUPS) {
+            const z = zones[key];
+            view[key] = { x: z.viewX, y: z.viewY, scale: z.viewScale };
+        }
+        const ui = {
+            leftSidebarCollapsed:  leftSB.classList.contains('collapsed'),
+            rightSidebarCollapsed: rightSB.classList.contains('collapsed'),
+            hudCollapsed:          document.getElementById('data-hud').classList.contains('collapsed'),
+            leftSidebarWidth:      leftSB.classList.contains('collapsed')  ? null : leftSB.offsetWidth,
+            rightSidebarWidth:     rightSB.classList.contains('collapsed') ? null : rightSB.offsetWidth,
+            activeZone:            activeZoneKey,
+        };
+        const data = JSON.stringify({ title, zones, variables, analytical, view, ui }, null, 2);
+        const blob = new Blob([data], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const safeName = title.replace(/[^a-zA-Z0-9_\-\s]/g, '').trim().replace(/\s+/g, '_') || 'markov_model';
+        a.download = safeName + '.json';
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    function applyProjectData(content) {
+        // Backward compatibility: old format with flat states/links
+        if (content.states && !content.zones) {
+            zones.sensor.states = content.states || [];
+            zones.sensor.links  = content.links  || [];
+            zones.logic.states  = [];
+            zones.logic.links   = [];
+            zones.final.states  = [];
+            zones.final.links   = [];
+        } else if (content.zones) {
+            for (const key of GROUPS) {
+                if (content.zones[key]) {
+                    zones[key].states   = content.zones[key].states   || [];
+                    zones[key].links    = content.zones[key].links    || [];
+                    zones[key].subtitle = content.zones[key].subtitle || '';
+                }
+            }
+        }
+
+        // Restore subtitles
+        for (const key of GROUPS) {
+            if (!zones[key].subtitle) zones[key].subtitle = '';
+            const subInput = document.getElementById('subtitle-' + key);
+            if (subInput) subInput.value = zones[key].subtitle;
+        }
+
+        variables = content.variables || { rates: [], testes: [], startDate: '01/01/25', endDate: '01/01/26' };
+        if (!variables.startDate) variables.startDate = '01/01/25';
+        if (!variables.endDate)   variables.endDate   = '01/01/26';
+        variables.testes = (variables.testes || []).map(tst => {
+            const out = { n: tst.n, dates: tst.dates || [], desc: tst.desc || '', group: tst.group || 'sensor' };
+            return out;
+        });
+        variables.rates = (variables.rates || []).map(r => {
+            return { n: r.n, v: String(r.v), desc: r.desc || '', group: r.group || 'sensor' };
+        });
+
+        document.getElementById('projectTitle').value = content.title || t('untitled');
+        document.getElementById('sim-start-date').value = variables.startDate;
+        document.getElementById('sim-end-date').value   = variables.endDate;
+        if (content.analytical) {
+            const a = content.analytical;
+            if (a.ldu   !== undefined) document.getElementById('an_ldu').value   = a.ldu;
+            if (a.ldd   !== undefined) document.getElementById('an_ldd').value   = a.ldd;
+            if (a.TI    !== undefined) document.getElementById('an_TI').value    = a.TI;
+            if (a.MTTR  !== undefined) document.getElementById('an_MTTR').value  = a.MTTR;
+            if (a.beta  !== undefined) document.getElementById('an_beta').value  = a.beta;
+            if (a.betad !== undefined) document.getElementById('an_betad').value = a.betad;
+            if (a.M     !== undefined) document.getElementById('an_M').value     = a.M;
+            if (a.N     !== undefined) document.getElementById('an_N').value     = a.N;
+            if (a.MT    !== undefined) document.getElementById('an_MT').value    = a.MT;
+            if (a.PTC   !== undefined) document.getElementById('an_PTC').value   = a.PTC;
+            const chk = document.getElementById('chk_partial_test');
+            const ptFields = document.getElementById('partial-test-fields');
+            const enabled = !!a.partialTestEnabled;
+            chk.checked = enabled;
+            ptFields.classList.toggle('visible', enabled);
+        }
+        if (content.view) {
+            for (const key of GROUPS) {
+                if (content.view[key]) {
+                    zones[key].viewX     = content.view[key].x     ?? 0;
+                    zones[key].viewY     = content.view[key].y     ?? 0;
+                    zones[key].viewScale = content.view[key].scale ?? 1;
+                    updateZoomLabel(key);
+                }
+            }
+        }
+        if (content.ui) {
+            const leftSB   = document.getElementById('sidebar-vars');
+            const rightSB  = document.getElementById('sidebar-right');
+            const hud      = document.getElementById('data-hud');
+            const leftBtn  = document.getElementById('sidebar-toggle');
+            const rightBtn = document.getElementById('sidebar-right-toggle');
+            const leftRes  = document.getElementById('sidebar-resize');
+            const rightRes = document.getElementById('sidebar-right-resize');
+            if (content.ui.leftSidebarCollapsed) {
+                leftSB.classList.add('collapsed'); leftBtn.textContent = '▶'; leftRes.style.display = 'none';
+            } else {
+                leftSB.classList.remove('collapsed'); leftBtn.textContent = '◀'; leftRes.style.display = '';
+                if (content.ui.leftSidebarWidth) leftSB.style.width = content.ui.leftSidebarWidth + 'px';
+            }
+            if (content.ui.rightSidebarCollapsed) {
+                rightSB.classList.add('collapsed'); rightBtn.textContent = '◀'; rightRes.style.display = 'none';
+            } else {
+                rightSB.classList.remove('collapsed'); rightBtn.textContent = '▶'; rightRes.style.display = '';
+                if (content.ui.rightSidebarWidth) rightSB.style.width = content.ui.rightSidebarWidth + 'px';
+            }
+            hud.classList.toggle('collapsed', !!content.ui.hudCollapsed);
+            document.getElementById('hud-toggle-btn').textContent = content.ui.hudCollapsed ? '▲' : '▼';
+            if (content.ui.activeZone && GROUPS.includes(content.ui.activeZone)) {
+                activeZoneKey = content.ui.activeZone;
+            }
+        }
+        renderVariables();
+        updateDataViews();
+        setTimeout(resizeCanvases, 50);
+    }
+
+    function loadProject(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = e => {
+            let content;
+            try { content = JSON.parse(e.target.result); }
+            catch { alert(t('invalidFile')); return; }
+            applyProjectData(content);
+        };
+        event.target.value = '';
+        reader.readAsText(file);
+    }
+
+    // Load project from URL query param: ?project=<url-to-json>
+    // Inside the JSON, zones.sensor / zones.logic / zones.final can be:
+    //   - an object (inline states/links/subtitle) — normal
+    //   - a string URL — fetched and merged as zone data
+    async function loadProjectFromURL() {
+        const params = new URLSearchParams(window.location.search);
+        const projectUrl = params.get('project');
+        if (!projectUrl) return;
+
+        try {
+            const resp = await fetch(projectUrl);
+            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+            const content = await resp.json();
+
+            // Resolve zone URLs if any zone value is a string (URL)
+            if (content.zones) {
+                const fetches = [];
+                for (const key of GROUPS) {
+                    if (typeof content.zones[key] === 'string') {
+                        fetches.push(
+                            fetch(content.zones[key])
+                                .then(r => { if (!r.ok) throw new Error('Zone ' + key + ': HTTP ' + r.status); return r.json(); })
+                                .then(data => { content.zones[key] = data; })
+                        );
+                    }
+                }
+                if (fetches.length > 0) await Promise.all(fetches);
+            }
+
+            applyProjectData(content);
+            console.log('Project loaded from URL: ' + projectUrl);
+        } catch (err) {
+            console.error('Failed to load project from URL:', err);
+        }
+    }
+
+    function exportZone(zoneKey) {
+        const z = zones[zoneKey];
+        const zoneNames = { sensor: 'Sensores', logic: 'LogicSolver', final: 'ElementosFinais' };
+        const exportData = {
+            zoneType: zoneKey,
+            subtitle: z.subtitle || '',
+            states: z.states,
+            links: z.links
+        };
+        const data = JSON.stringify(exportData, null, 2);
+        const blob = new Blob([data], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const title = document.getElementById('projectTitle').value || 'modelo';
+        const safeName = title.replace(/[^a-zA-Z0-9_\-\s]/g, '').trim().replace(/\s+/g, '_') || 'modelo';
+        const subSuffix = z.subtitle ? '_' + z.subtitle.replace(/[^a-zA-Z0-9_\-\s]/g, '').trim().replace(/\s+/g, '_') : '';
+        a.download = safeName + '_' + (zoneNames[zoneKey] || zoneKey) + subSuffix + '.json';
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    function importZone(zoneKey, event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = e => {
+            let content;
+            try { content = JSON.parse(e.target.result); }
+            catch { alert(currentLang === 'pt' ? 'Arquivo JSON invalido.' : 'Invalid JSON file.'); return; }
+            if (!content.states || !Array.isArray(content.states)) {
+                alert(currentLang === 'pt'
+                    ? 'Arquivo nao contem dados de secao validos (states).'
+                    : 'File does not contain valid section data (states).');
+                return;
+            }
+            zones[zoneKey].states = content.states;
+            zones[zoneKey].links  = content.links || [];
+            zones[zoneKey].subtitle = content.subtitle || '';
+            zones[zoneKey].selected = null;
+            zones[zoneKey].dragging = null;
+            zones[zoneKey].connecting = null;
+            const subInput = document.getElementById('subtitle-' + zoneKey);
+            if (subInput) subInput.value = zones[zoneKey].subtitle;
+            updateDataViews();
+            setTimeout(resizeCanvases, 50);
+        };
+        event.target.value = '';
+        reader.readAsText(file);
+    }
+
+    function exportVarGroup(grp) {
+        const grpRates = variables.rates.filter(r => r.group === grp);
+        const grpTests = variables.testes.filter(t => t.group === grp);
+        const zoneNames = { sensor: 'Sensores', logic: 'LogicSolver', final: 'ElementosFinais' };
+        const exportData = {
+            varGroupType: grp,
+            subtitle: zones[grp] ? zones[grp].subtitle || '' : '',
+            rates: grpRates,
+            testes: grpTests
+        };
+        const data = JSON.stringify(exportData, null, 2);
+        const blob = new Blob([data], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const title = document.getElementById('projectTitle').value || 'modelo';
+        const safeName = title.replace(/[^a-zA-Z0-9_\-\s]/g, '').trim().replace(/\s+/g, '_') || 'modelo';
+        a.download = safeName + '_vars_' + (zoneNames[grp] || grp) + '.json';
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    function importVarGroup(grp, event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = e => {
+            let content;
+            try { content = JSON.parse(e.target.result); }
+            catch { alert(currentLang === 'pt' ? 'Arquivo JSON invalido.' : 'Invalid JSON file.'); return; }
+            if (!content.rates && !content.testes) {
+                alert(currentLang === 'pt'
+                    ? 'Arquivo nao contem dados de variaveis validos.'
+                    : 'File does not contain valid variable data.');
+                return;
+            }
+            // Remove existing rates/tests of this group
+            variables.rates  = variables.rates.filter(r => r.group !== grp);
+            variables.testes = variables.testes.filter(t => t.group !== grp);
+            // Add imported ones, forcing the group tag
+            if (content.rates && Array.isArray(content.rates)) {
+                for (const r of content.rates) {
+                    variables.rates.push({ n: r.n, v: String(r.v), desc: r.desc || '', group: grp });
+                }
+            }
+            if (content.testes && Array.isArray(content.testes)) {
+                for (const t of content.testes) {
+                    variables.testes.push({ n: t.n, dates: t.dates || [], desc: t.desc || '', group: grp });
+                }
+            }
+            renderVariables();
+            updateDataViews();
+        };
+        event.target.value = '';
+        reader.readAsText(file);
+    }
+
+    function addVariable(type, group) {
+        if (type === 'rates') {
+            const prefix = 'λ';
+            variables.rates.push({ n: prefix + (variables.rates.length + 1), v: '0', desc: '', group: group });
+        } else {
+            variables.testes.push({ n: 'T' + (variables.testes.length + 1), dates: [], desc: '', group: group });
+        }
+        renderVariables();
+    }
+
+    function validateTestNames() {
+        const rateNames = variables.rates.map(r => r.n);
+        const conflicts = [];
+        for (const tst of variables.testes) {
+            for (const rn of rateNames) {
+                if (rn.includes(tst.n) || tst.n.includes(rn)) {
+                    if (rn.includes(tst.n) && tst.n.length > 0) {
+                        conflicts.push(tst.n + ' ⊆ ' + rn);
+                    }
+                }
+            }
+        }
+        const msgEl = document.getElementById('var-validation-msg');
+        if (conflicts.length > 0) {
+            msgEl.textContent = t('testNameConflict') + conflicts.join(', ');
+            msgEl.style.display = 'block';
+        } else {
+            msgEl.style.display = 'none';
+        }
+        return conflicts.length === 0;
+    }
+
+    const GROUP_LABELS = {
+        sensor: 'grpSensor',
+        logic:  'grpLogic',
+        final:  'grpFinal'
+    };
+
+    function toggleGroup(grp) {
+        groupCollapsed[grp] = !groupCollapsed[grp];
+        renderVariables();
+    }
+
+    function renderVariables() {
+        GROUPS.forEach(grp => {
+            const container = document.getElementById('group-' + grp + '-container');
+            container.innerHTML = '';
+
+            const grpRates = variables.rates.map((r, i) => ({...r, _idx: i})).filter(r => r.group === grp);
+            const grpTests = variables.testes.map((t, i) => ({...t, _idx: i})).filter(t => t.group === grp);
+
+            const section = document.createElement('div');
+            section.className = 'group-section ' + GROUP_CSS[grp];
+
+            const header = document.createElement('div');
+            header.className = 'group-header';
+            header.onclick = function() { toggleGroup(grp); };
+            const arrow = document.createElement('span');
+            arrow.className = 'group-toggle' + (groupCollapsed[grp] ? ' collapsed' : '');
+            arrow.textContent = '▼';
+            const label = document.createElement('span');
+            label.textContent = t(GROUP_LABELS[grp]);
+            const countBadge = document.createElement('span');
+            countBadge.style.cssText = 'font-size:10px; opacity:0.8; font-weight:normal;';
+            countBadge.textContent = '(' + grpRates.length + 'R / ' + grpTests.length + 'T)';
+            const headerLeft = document.createElement('div');
+            headerLeft.style.cssText = 'display:flex; align-items:center; gap:4px;';
+            headerLeft.appendChild(arrow);
+            headerLeft.appendChild(label);
+            headerLeft.appendChild(countBadge);
+
+            const headerRight = document.createElement('div');
+            headerRight.style.cssText = 'display:flex; gap:3px;';
+            headerRight.onclick = function(e) { e.stopPropagation(); };
+
+            const expBtn = document.createElement('button');
+            expBtn.style.cssText = 'background:rgba(255,255,255,0.25); color:white; border:1px solid rgba(255,255,255,0.4); padding:1px 6px; border-radius:3px; cursor:pointer; font-size:10px;';
+            expBtn.title = currentLang === 'pt' ? 'Exportar variáveis' : 'Export variables';
+            expBtn.textContent = '⬇';
+            expBtn.onclick = function() { exportVarGroup(grp); };
+
+            const impBtn = document.createElement('button');
+            impBtn.style.cssText = 'background:rgba(255,255,255,0.25); color:white; border:1px solid rgba(255,255,255,0.4); padding:1px 6px; border-radius:3px; cursor:pointer; font-size:10px;';
+            impBtn.title = currentLang === 'pt' ? 'Importar variáveis' : 'Import variables';
+            impBtn.textContent = '⬆';
+            const impInput = document.createElement('input');
+            impInput.type = 'file'; impInput.accept = '.json'; impInput.style.display = 'none';
+            impInput.onchange = function(ev) { importVarGroup(grp, ev); };
+            impBtn.onclick = function() { impInput.click(); };
+
+            headerRight.appendChild(expBtn);
+            headerRight.appendChild(impBtn);
+            headerRight.appendChild(impInput);
+
+            header.appendChild(headerLeft);
+            header.appendChild(headerRight);
+            section.appendChild(header);
+
+            const body = document.createElement('div');
+            body.className = 'group-body' + (groupCollapsed[grp] ? ' collapsed' : '');
+
+            if (grpRates.length > 0 || !groupCollapsed[grp]) {
+                const rTitle = document.createElement('div');
+                rTitle.style.cssText = 'font-size:10px; font-weight:bold; color:#555; margin-bottom:3px; text-transform:uppercase;';
+                rTitle.textContent = t('rates');
+                body.appendChild(rTitle);
+
+                const table = document.createElement('table');
+                table.className = 'var-table';
+                const thead = document.createElement('thead');
+                thead.innerHTML = '<tr><th>' + t('name') + '</th><th>' + t('valueFormula') + '</th><th></th></tr>';
+                table.appendChild(thead);
+                const tbody = document.createElement('tbody');
+
+                grpRates.forEach(v => {
+                    const ri = v._idx;
+                    const tr = document.createElement('tr');
+
+                    const nameCell = document.createElement('td');
+                    const nameInput = document.createElement('input');
+                    nameInput.type = 'text'; nameInput.value = v.n;
+                    nameInput.onchange = function() { variables.rates[ri].n = this.value; validateTestNames(); updateDataViews(); };
+                    nameCell.appendChild(nameInput);
+
+                    const valCell = document.createElement('td');
+                    const valInput = document.createElement('input');
+                    valInput.type = 'text'; valInput.className = 'rate-val';
+                    valInput.value = v.v;
+                    valInput.placeholder = 'ex: 0.001 ou λ_du*2';
+                    valInput.onchange = function() { variables.rates[ri].v = this.value.trim(); };
+                    valCell.appendChild(valInput);
+
+                    const delCell = document.createElement('td');
+                    delCell.textContent = '×'; delCell.style.color = 'red'; delCell.style.cursor = 'pointer';
+                    delCell.onclick = function() { variables.rates.splice(ri, 1); renderVariables(); updateDataViews(); };
+
+                    tr.appendChild(nameCell); tr.appendChild(valCell); tr.appendChild(delCell);
+                    tbody.appendChild(tr);
+
+                    const trDesc = document.createElement('tr');
+                    const descCell = document.createElement('td');
+                    descCell.colSpan = 3;
+                    const descInput = document.createElement('input');
+                    descInput.type = 'text'; descInput.className = 'desc-input';
+                    descInput.value = v.desc || '';
+                    descInput.placeholder = t('descPlaceholder');
+                    descInput.onchange = function() { variables.rates[ri].desc = this.value; };
+                    descCell.appendChild(descInput);
+                    trDesc.appendChild(descCell);
+                    tbody.appendChild(trDesc);
+                });
+
+                table.appendChild(tbody);
+                body.appendChild(table);
+            }
+
+            const addRateBtn = document.createElement('button');
+            addRateBtn.className = 'add-btn';
+            addRateBtn.textContent = t('addRate');
+            addRateBtn.onclick = function() { addVariable('rates', grp); };
+            body.appendChild(addRateBtn);
+
+            if (grpTests.length > 0 || !groupCollapsed[grp]) {
+                const tTitle = document.createElement('div');
+                tTitle.style.cssText = 'font-size:10px; font-weight:bold; color:#555; margin: 6px 0 3px; text-transform:uppercase;';
+                tTitle.textContent = t('tests');
+                body.appendChild(tTitle);
+
+                grpTests.forEach(tst => {
+                    const ti = tst._idx;
+                    const card = document.createElement('div');
+                    card.className = 'test-card';
+
+                    const hdr = document.createElement('div');
+                    hdr.className = 'test-card-header';
+                    const nameInput = document.createElement('input');
+                    nameInput.type = 'text'; nameInput.value = tst.n;
+                    nameInput.onchange = function() {
+                        variables.testes[ti].n = this.value;
+                        validateTestNames();
+                        renderVariables();
+                        updateDataViews();
+                    };
+                    const rateNames = variables.rates.map(r => r.n);
+                    const hasConflict = rateNames.some(rn => rn.includes(tst.n) && tst.n.length > 0);
+                    if (hasConflict) nameInput.className = 'test-name-error';
+
+                    const delBtn = document.createElement('span');
+                    delBtn.className = 'del-btn'; delBtn.textContent = '×';
+                    delBtn.onclick = function() { variables.testes.splice(ti, 1); renderVariables(); updateDataViews(); };
+                    hdr.appendChild(nameInput); hdr.appendChild(delBtn);
+                    card.appendChild(hdr);
+
+                    if (hasConflict) {
+                        const errMsg = document.createElement('div');
+                        errMsg.className = 'test-name-error-msg';
+                        errMsg.textContent = t('testNameConflict') + rateNames.filter(rn => rn.includes(tst.n)).join(', ');
+                        card.appendChild(errMsg);
+                    }
+
+                    const descInput = document.createElement('input');
+                    descInput.type = 'text'; descInput.className = 'test-desc-input';
+                    descInput.value = tst.desc || '';
+                    descInput.placeholder = t('descPlaceholder');
+                    descInput.onchange = function() { variables.testes[ti].desc = this.value; };
+                    card.appendChild(descInput);
+
+                    const textarea = document.createElement('textarea');
+                    textarea.className = 'test-dates-input';
+                    textarea.value = (tst.dates || []).join(', ');
+                    textarea.placeholder = 'DD/MM/YY, DD/MM/YY, ...';
+                    textarea.onchange = function() {
+                        const raw = this.value.split(',').map(s => s.trim()).filter(s => s.length > 0);
+                        variables.testes[ti].dates = raw;
+                    };
+                    card.appendChild(textarea);
+
+                    const hint = document.createElement('div');
+                    hint.className = 'test-dates-hint';
+                    hint.textContent = (tst.dates || []).length + (currentLang === 'pt' ? ' data(s) de teste' : ' test date(s)');
+                    card.appendChild(hint);
+
+                    body.appendChild(card);
+                });
+            }
+
+            const addTestBtn = document.createElement('button');
+            addTestBtn.className = 'add-btn';
+            addTestBtn.textContent = t('addTest');
+            addTestBtn.onclick = function() { addVariable('testes', grp); };
+            body.appendChild(addTestBtn);
+
+            section.appendChild(body);
+            container.appendChild(section);
+        });
+
+        validateTestNames();
+    }
+
+    function applyStateEdits() {
+        const z = zones[activeZoneKey];
+        if(z.selected && z.selected.uid) {
+            z.selected.value = document.getElementById('m_s_name').value;
+            z.selected.status = document.getElementById('m_s_status').value;
+            updateDataViews();
+        }
+        document.getElementById('stateModal').style.display = 'none';
+    }
+
+    function applyLinkEdits() {
+        const z = zones[activeZoneKey];
+        if(z.selected && !z.selected.uid) {
+            z.selected.val = document.getElementById('m_l_val').value;
+            updateDataViews();
+        }
+        document.getElementById('linkModal').style.display='none';
+    }
+
+    // Math utilities
+    function parseDateDDMMYY(str) {
+        const parts = str.trim().split('/');
+        if (parts.length !== 3) return null;
+        const day   = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1;
+        let year    = parseInt(parts[2], 10);
+        if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
+        if (year < 100) year += 2000;
+        return new Date(year, month, day, 0, 0, 0, 0);
+    }
+
+    function hoursBetween(dateA, dateB) {
+        return Math.round((dateB.getTime() - dateA.getTime()) / (1000 * 60 * 60));
+    }
+
+    function resolveRates(rates) {
+        const context = {};
+        const formulas = {};
+
+        for (const r of rates) {
+            const val = String(r.v).trim();
+            const num = Number(val);
+            if (!isNaN(num) && val !== '') {
+                context[r.n] = num;
+            } else {
+                formulas[r.n] = val;
+            }
+        }
+
+        for (let pass = 0; pass < 20; pass++) {
+            let resolved = 0;
+            const remaining = Object.keys(formulas);
+            if (remaining.length === 0) break;
+
+            for (const name of remaining) {
+                const result = evalFormula(formulas[name], context);
+                if (isFinite(result)) {
+                    context[name] = result;
+                    delete formulas[name];
+                    resolved++;
+                }
+            }
+            if (resolved === 0) break;
+        }
+
+        for (const name of Object.keys(formulas)) {
+            console.warn('Could not resolve rate:', name, '=', formulas[name]);
+            context[name] = 0;
+        }
+
+        return context;
+    }
+
+    function evalFormula(formula, context) {
+        let expr = String(formula).trim();
+        if (!expr || expr === '0') return 0;
+        const keys = Object.keys(context).sort((a, b) => b.length - a.length);
+        for (const key of keys) {
+            expr = expr.split(key).join('(' + context[key] + ')');
+        }
+        try {
+            return Function('"use strict"; return (' + expr + ')')();
+        } catch(e) {
+            console.warn('Formula eval error:', formula, '->', expr, e);
+            return 0;
+        }
+    }
+
+    function matrix_mul(A, B) {
+        const rows = A.length;
+        const cols = B[0].length;
+        const inner = B.length;
+        const resultado = Array.from({length: rows}, () => new Array(cols).fill(0));
+        for (let i = 0; i < rows; i++) {
+            for (let j = 0; j < cols; j++) {
+                for (let k = 0; k < inner; k++) {
+                    resultado[i][j] += A[i][k] * B[k][j];
+                }
+            }
+        }
+        return resultado;
+    }
+
+    function factorial(n) {
+        let r = 1;
+        for (let i = 2; i <= n; i++) r *= i;
+        return r;
+    }
+
+    function comb(n, k) {
+        if (k < 0 || k > n) return 0;
+        return factorial(n) / (factorial(k) * factorial(n - k));
+    }
+
+    function markov_cal_Ntest_plot(transitionM, safeV, testsM, testHoursSets, maxT, n_pt) {
+        const nStates = transitionM.length;
+        const ntest = testHoursSets.length;
+
+        let rM = [new Array(nStates).fill(0)];
+        rM[0][0] = 1;
+
+        let pfd = 0;
+
+        if (maxT <= 0) maxT = 8760;
+
+        const interval = Math.max(1, Math.floor(maxT / (n_pt - 1)));
+
+        let safeM = [];
+        if (safeV.length > 1) {
+            safeM.push(safeV);
+        } else {
+            safeM = safeV;
+        }
+
+        const returnM = [rM[0].slice()];
+        const tempo = [0];
+
+        for (let i = 1; i <= maxT; i++) {
+            rM = matrix_mul(rM, transitionM);
+
+            for (let k = 0; k < ntest; k++) {
+                if (testHoursSets[k].has(i)) {
+                    rM = matrix_mul(rM, testsM[k]);
+                }
+            }
+
+            for (let j = 0; j < nStates; j++) {
+                if (safeM[0][j] === 0) {
+                    pfd += rM[0][j];
+                }
+            }
+
+            if (i % interval === 0) {
+                returnM.push(rM[0].slice());
+                tempo.push(i);
+            }
+        }
+
+        pfd = pfd / maxT;
+
+        return {
+            stateMatrix: returnM,
+            pfdavg: pfd,
+            tempo: tempo
+        };
+    }
+
+    function runZoneMarkov(zoneKey, suppressPopup) {
+        const z = zones[zoneKey];
+        const sorted = [...z.states].sort((a, b) => a.id - b.id);
+        if (sorted.length === 0) {
+            document.getElementById('calc-output').innerHTML = '<span style="color:orange">' + t('noStates') + '</span>';
+            return null;
+        }
+
+        const matrixFormulas = sorted.map(r => sorted.map(c => {
+            const l = z.links.find(li => li.from === r.uid && li.to === c.uid);
+            return l ? String(l.val).trim() : "0";
+        }));
+
+        const state_v = sorted.map(s => (s.status === 'Failure' ? 0 : 1));
+        const names_v = sorted.map(s => s.value);
+        const n = sorted.length;
+
+        document.getElementById('calc-output').innerHTML = t('jsCalc');
+
+        return new Promise((resolve) => {
+            setTimeout(() => {
+            try {
+                const startDateStr = document.getElementById('sim-start-date').value;
+                const endDateStr   = document.getElementById('sim-end-date').value;
+                const startDate = parseDateDDMMYY(startDateStr);
+                const endDate   = parseDateDDMMYY(endDateStr);
+                if (!startDate || !endDate) {
+                    throw new Error(currentLang === 'pt'
+                        ? 'Data inicial ou final invalida. Use formato DD/MM/YY.'
+                        : 'Invalid start or end date. Use DD/MM/YY format.');
+                }
+                const maxT = hoursBetween(startDate, endDate);
+                if (maxT <= 0) {
+                    throw new Error(currentLang === 'pt'
+                        ? 'Data final deve ser posterior a data inicial.'
+                        : 'End date must be after start date.');
+                }
+
+                const zoneRates = variables.rates.filter(r => r.group === zoneKey);
+                const zoneTests = variables.testes.filter(t => t.group === zoneKey);
+
+                const ratesContext = resolveRates(zoneRates);
+
+                const context = { ...ratesContext };
+                for (const tst of zoneTests) context[tst.n] = 0.0;
+
+                const mkv_matrix = [];
+                for (let i = 0; i < n; i++) {
+                    const row = [];
+                    for (let j = 0; j < n; j++) {
+                        row.push(evalFormula(matrixFormulas[i][j], context));
+                    }
+                    mkv_matrix.push(row);
+                }
+
+                for (let i = 0; i < n; i++) {
+                    mkv_matrix[i][i] = 1;
+                    for (let j = 0; j < n; j++) {
+                        if (i !== j) mkv_matrix[i][i] -= mkv_matrix[i][j];
+                    }
+                }
+
+                const tst_matrices = [];
+                const testHoursSets = [];
+
+                for (const tst of zoneTests) {
+                    const tstM = Array.from({length: n}, () => new Array(n).fill(0));
+                    for (let i = 0; i < n; i++) {
+                        for (let j = 0; j < n; j++) {
+                            if (matrixFormulas[i][j].includes(tst.n)) {
+                                tstM[i][j] = 1;
+                            }
+                        }
+                    }
+                    for (let k = 0; k < n; k++) {
+                        tstM[k][k] = 1;
+                        for (let l = 0; l < n; l++) {
+                            if (k !== l) tstM[k][k] -= tstM[k][l];
+                        }
+                    }
+                    tst_matrices.push(tstM);
+
+                    const hoursSet = new Set();
+                    for (const dateStr of (tst.dates || [])) {
+                        const testDate = parseDateDDMMYY(dateStr);
+                        if (!testDate) continue;
+                        const h = hoursBetween(startDate, testDate);
+                        if (h > 0 && h <= maxT) {
+                            hoursSet.add(h);
+                        }
+                    }
+                    testHoursSets.push(hoursSet);
+                }
+
+                const n_pt = 200;
+
+                const result = markov_cal_Ntest_plot(mkv_matrix, state_v, tst_matrices, testHoursSets, maxT, n_pt);
+
+                const pfdAvg = result.pfdavg;
+                const pfdStr = pfdAvg.toExponential(2);
+
+                document.getElementById('calc-output').innerHTML = 'PFDavg: ' + pfdStr;
+
+                const failSeriesData = [];
+                const failLabels = [];
+                const chartColors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'];
+
+                for (let i = 0; i < n; i++) {
+                    if (state_v[i] === 0) {
+                        const series = result.stateMatrix.map(row => row[i]);
+                        failSeriesData.push(series);
+                        failLabels.push(names_v[i]);
+                    }
+                }
+
+                const failSum = result.stateMatrix.map(row => {
+                    let s = 0;
+                    for (let i = 0; i < n; i++) {
+                        if (state_v[i] === 0) s += row[i];
+                    }
+                    return s;
+                });
+                failSeriesData.push(failSum);
+                failLabels.push('Sum');
+
+                if (!suppressPopup) {
+                    const zoneDisplayNames = { sensor: 'Sensor', logic: 'Logic Solver', final: 'Final Elements' };
+                    const zoneName = zoneDisplayNames[zoneKey] || zoneKey;
+                    const sub = zones[zoneKey].subtitle ? ' - ' + zones[zoneKey].subtitle : '';
+                    const zoneChartTitle = t('graphTitle') + ': ' + zoneName + sub;
+                    abrirJanelaGrafico(result.tempo, failSeriesData, failLabels, chartColors, pfdStr, startDateStr, false, zoneTests, zoneChartTitle);
+                }
+
+                resolve({
+                    zoneKey: zoneKey,
+                    pfdavg: pfdAvg,
+                    tempo: result.tempo,
+                    failSeriesData: failSeriesData,
+                    failLabels: failLabels,
+                    chartColors: chartColors,
+                    zoneTests: zoneTests,
+                    matrixFormulas: matrixFormulas,
+                    stateNames: names_v,
+                    stateStatus: state_v
+                });
+
+            } catch (err) {
+                console.error(err);
+                document.getElementById('calc-output').innerHTML = '<span style="color:red">' + t('errPrefix') + err.message + '</span>';
+                resolve(null);
+            }
+            }, 50);
+        });
+    }
+
+    function runAllMarkov() {
+        const results = {};
+
+        const zoneKeys = GROUPS.filter(key => zones[key].states.length > 0);
+        if (zoneKeys.length === 0) return;
+
+        const promises = zoneKeys.map(key =>
+            runZoneMarkov(key, true).then(result => {
+                if (result) results[key] = result;
+                return result;
+            })
+        );
+
+        Promise.all(promises).then(() => {
+            if (Object.keys(results).length === 0) return;
+
+            const startDateStr = document.getElementById('sim-start-date').value;
+            const refKey = Object.keys(results)[0];
+            const nPts = results[refKey].failSeriesData[0].length;
+
+            // Compute PFDavg_total = sum of individual PFDavg (temporal average of sum = sum of temporal averages)
+            let pfdAvgTotal = 0;
+            for (const key of Object.keys(results)) {
+                pfdAvgTotal += results[key].pfdavg || 0;
+            }
+            const pfdAvgStr = pfdAvgTotal.toExponential(2);
+
+            const combinedLabels = [t('pfdSensor'), t('pfdLogic'), t('pfdFinal'), t('pfdTotal'), 'PFDavg (' + pfdAvgStr + ')'];
+            const combinedColors = ['#2980b9', '#8e44ad', '#27ae60', '#e67e22', '#c0392b'];
+
+            const sensorSeries = [], logicSeries = [], finalSeries = [], totalSeries = [], avgSeries = [];
+
+            for (let i = 0; i < nPts; i++) {
+                const sVal = results.sensor ? (results.sensor.failSeriesData[results.sensor.failSeriesData.length - 1][i] || 0) : 0;
+                const lVal = results.logic  ? (results.logic.failSeriesData[results.logic.failSeriesData.length - 1][i] || 0)  : 0;
+                const fVal = results.final  ? (results.final.failSeriesData[results.final.failSeriesData.length - 1][i] || 0)  : 0;
+                const total = sVal + lVal + fVal;
+
+                sensorSeries.push(sVal);
+                logicSeries.push(lVal);
+                finalSeries.push(fVal);
+                totalSeries.push(total);
+                avgSeries.push(pfdAvgTotal); // horizontal constant line
+            }
+
+            const seriesData = [sensorSeries, logicSeries, finalSeries, totalSeries, avgSeries];
+
+            const pieData = {
+                labels: [t('pfdSensor'), t('pfdLogic'), t('pfdFinal')],
+                values: [
+                    results.sensor ? results.sensor.pfdavg : 0,
+                    results.logic  ? results.logic.pfdavg  : 0,
+                    results.final  ? results.final.pfdavg  : 0
+                ],
+                colors: ['#2980b9', '#8e44ad', '#27ae60']
+            };
+
+            abrirRelatorioCombinado(results[refKey].tempo, seriesData, combinedLabels, combinedColors, pfdAvgStr, startDateStr, variables, pieData, results);
+        });
+    }
+
+    function abrirRelatorioCombinado(times, seriesData, labels, colors, pfdAvgStr, startDateStr, vars, pieData, results) {
+        const win = window.open("", "_blank", "width=860,height=900");
+        if (!win) { alert('Popup blocked!'); return; }
+
+        const projectTitle = document.getElementById('projectTitle').value || t('untitled');
+        const endDateStr = document.getElementById('sim-end-date').value;
+        const now = new Date();
+        const calcDate = String(now.getDate()).padStart(2,'0') + '/' + String(now.getMonth()+1).padStart(2,'0') + '/' + now.getFullYear() + ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+
+        const zoneDisplayNames = { sensor: 'Sensores', logic: 'Logic Solver', final: 'Elementos Finais' };
+        const zoneColors = { sensor: '#2980b9', logic: '#8e44ad', final: '#27ae60' };
+
+        // Build symbolic matrix HTML for each zone
+        let matricesHtml = '';
+        for (const key of GROUPS) {
+            if (!results[key] || !results[key].matrixFormulas) continue;
+            const mf = results[key].matrixFormulas;
+            const sn = results[key].stateNames || [];
+            const sv = results[key].stateStatus || [];
+            const n = mf.length;
+            const sub = zones[key].subtitle ? ' — ' + zones[key].subtitle : '';
+            const pv = results[key].pfdavg.toExponential(3);
+
+            matricesHtml += '<div class="matrix-block">';
+            matricesHtml += '<div class="zone-title" style="border-left:4px solid ' + zoneColors[key] + '">' + zoneDisplayNames[key] + sub + '<span class="zone-pfd">PFDavg: ' + pv + '</span></div>';
+
+            // State legend
+            matricesHtml += '<div class="state-legend">';
+            for (let i = 0; i < n; i++) {
+                const stClass = sv[i] === 0 ? 'fail' : 'ok';
+                matricesHtml += '<span class="state-chip ' + stClass + '">' + sn[i] + ' (ID ' + i + ')' + (sv[i] === 0 ? ' &#x2718;' : ' &#x2714;') + '</span>';
+            }
+            matricesHtml += '</div>';
+
+            // Matrix table
+            matricesHtml += '<table class="matrix-table"><thead><tr><th class="corner">De \\ Para</th>';
+            for (let j = 0; j < n; j++) {
+                matricesHtml += '<th>' + sn[j] + '</th>';
+            }
+            matricesHtml += '</tr></thead><tbody>';
+            for (let i = 0; i < n; i++) {
+                matricesHtml += '<tr><th>' + sn[i] + '</th>';
+                for (let j = 0; j < n; j++) {
+                    if (i === j) {
+                        // Diagonal: 1 - Σ (symbolic)
+                        const hasOff = mf[i].some((v, k) => k !== i && v !== '0' && v !== '');
+                        const diagStr = hasOff ? '1 &minus; &Sigma;' : '1';
+                        matricesHtml += '<td class="diag">' + diagStr + '</td>';
+                    } else {
+                        const val = mf[i][j];
+                        const cls = (val === '0' || val === '') ? 'zero' : 'rate';
+                        matricesHtml += '<td class="' + cls + '">' + (val || '0') + '</td>';
+                    }
+                }
+                matricesHtml += '</tr>';
+            }
+            matricesHtml += '</tbody></table>';
+            matricesHtml += '</div>';
+        }
+
+        // Build variable tables HTML for each zone
+        let varTablesHtml = '';
+        for (const key of GROUPS) {
+            const zRates = vars.rates.filter(r => r.group === key);
+            const zTests = vars.testes.filter(tt => tt.group === key);
+            const sub = zones[key].subtitle ? ' — ' + zones[key].subtitle : '';
+            const pfdVal = results[key] ? results[key].pfdavg.toExponential(3) : '—';
+
+            varTablesHtml += '<div class="zone-block">';
+            varTablesHtml += '<div class="zone-title" style="border-left:4px solid ' + zoneColors[key] + '">' + zoneDisplayNames[key] + sub + '<span class="zone-pfd">PFDavg: ' + pfdVal + '</span></div>';
+
+            if (zRates.length > 0) {
+                varTablesHtml += '<table class="data-table"><thead><tr><th>Variavel</th><th>Valor / Formula</th><th>Descricao</th></tr></thead><tbody>';
+                for (const r of zRates) {
+                    varTablesHtml += '<tr><td class="mono">' + r.n + '</td><td class="mono">' + r.v + '</td><td class="desc">' + (r.desc || '—') + '</td></tr>';
+                }
+                varTablesHtml += '</tbody></table>';
+            }
+
+            if (zTests.length > 0) {
+                varTablesHtml += '<table class="data-table"><thead><tr><th>Teste</th><th>Datas de Execucao</th><th>Descricao</th></tr></thead><tbody>';
+                for (const tt of zTests) {
+                    varTablesHtml += '<tr><td class="mono">' + tt.n + '</td><td class="mono">' + (tt.dates || []).join(', ') + '</td><td class="desc">' + (tt.desc || '—') + '</td></tr>';
+                }
+                varTablesHtml += '</tbody></table>';
+            }
+
+            if (zRates.length === 0 && zTests.length === 0) {
+                varTablesHtml += '<p class="empty-note">Nenhuma variavel definida</p>';
+            }
+            varTablesHtml += '</div>';
+        }
+
+        // SIL classification
+        let silClass = '—';
+        const pfdNum = parseFloat(pfdAvgStr);
+        if (pfdNum >= 1e-1) silClass = 'Abaixo de SIL 1';
+        else if (pfdNum >= 1e-2) silClass = 'SIL 1';
+        else if (pfdNum >= 1e-3) silClass = 'SIL 2';
+        else if (pfdNum >= 1e-4) silClass = 'SIL 3';
+        else silClass = 'SIL 4';
+
+        const silBg = silClass === 'SIL 4' ? '#27ae60' : silClass === 'SIL 3' ? '#2980b9' : silClass === 'SIL 2' ? '#e67e22' : silClass === 'SIL 1' ? '#d35400' : '#c0392b';
+
+        const css = `
+            @page { size: A4; margin: 12mm; }
+            @media print {
+                body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                .no-print { display: none !important; }
+                .page { box-shadow: none; margin: 0; break-after: page; }
+            }
+            * { box-sizing: border-box; margin: 0; padding: 0; }
+            body { font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; background: #e0e0e0; color: #2c3e50; font-size: 10.5px; line-height: 1.45; }
+            .page { width: 210mm; min-height: 297mm; margin: 10px auto; background: white; padding: 14mm 16mm; box-shadow: 0 2px 12px rgba(0,0,0,0.15); position: relative; overflow: hidden; }
+            .header-bar { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #2c3e50; padding-bottom: 8px; margin-bottom: 12px; }
+            .header-left h1 { font-size: 17px; color: #2c3e50; margin-bottom: 1px; letter-spacing: 0.5px; }
+            .header-left .subtitle { font-size: 11px; color: #7f8c8d; font-style: italic; }
+            .header-right { text-align: right; font-size: 9.5px; color: #555; line-height: 1.55; }
+            .header-right strong { color: #2c3e50; }
+            .page-label { text-align: right; font-size: 9px; color: #bbb; margin-bottom: 6px; }
+            .info-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+            .info-box { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 7px 9px; }
+            .info-box .label { font-size: 8.5px; text-transform: uppercase; letter-spacing: 0.5px; color: #7f8c8d; margin-bottom: 2px; }
+            .info-box .val { font-size: 13px; font-weight: bold; color: #2c3e50; font-family: 'Courier New', monospace; }
+            .result-banner { background: linear-gradient(135deg, #2c3e50, #34495e); color: white; border-radius: 6px; padding: 12px 16px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+            .result-banner .pfd-value { font-size: 26px; font-weight: bold; font-family: 'Courier New', monospace; letter-spacing: 1px; }
+            .result-banner .pfd-label { font-size: 9.5px; opacity: 0.8; }
+            .result-banner .sil-badge { background: ${silBg}; padding: 6px 14px; border-radius: 4px; font-weight: bold; font-size: 13px; }
+            .section-title { font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; color: #2c3e50; border-bottom: 2px solid #bdc3c7; padding-bottom: 3px; margin: 10px 0 7px 0; }
+            .zone-block { margin-bottom: 8px; }
+            .zone-title { padding: 4px 8px; font-size: 10.5px; font-weight: bold; color: #2c3e50; background: #f8f9fa; display: flex; justify-content: space-between; align-items: center; }
+            .zone-pfd { font-family: 'Courier New', monospace; font-size: 10.5px; color: #e67e22; }
+            .data-table { width: 100%; border-collapse: collapse; margin-bottom: 5px; font-size: 9.5px; }
+            .data-table th { background: #ecf0f1; padding: 3px 5px; text-align: left; font-size: 8.5px; text-transform: uppercase; letter-spacing: 0.3px; color: #555; border: 1px solid #ddd; }
+            .data-table td { padding: 2px 5px; border: 1px solid #eee; }
+            .data-table td.mono { font-family: 'Courier New', monospace; font-size: 9.5px; }
+            .data-table td.desc { font-style: italic; color: #7f8c8d; font-size: 9px; }
+            .empty-note { font-style: italic; color: #aaa; font-size: 9.5px; padding: 3px 8px; }
+            .combined-chart-area { margin-top: 6px; }
+            canvas { max-width: 100%; border: 1px solid #eee; border-radius: 4px; }
+            .pie-row { display: flex; gap: 12px; align-items: flex-start; margin-top: 8px; }
+            .pie-col { flex: 0 0 220px; }
+            .pie-info-col { flex: 1; }
+            .zone-chart-block { margin-bottom: 10px; }
+            .zone-chart-header { font-size: 11px; font-weight: bold; margin-bottom: 4px; padding: 4px 8px; border-radius: 3px; color: white; display: flex; justify-content: space-between; align-items: center; }
+            .zone-chart-header .zpfd { font-family: 'Courier New', monospace; font-size: 11px; }
+            .matrix-block { margin-bottom: 12px; }
+            .state-legend { padding: 4px 8px; display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+            .state-chip { font-size: 9px; padding: 2px 6px; border-radius: 3px; font-family: 'Courier New', monospace; }
+            .state-chip.ok { background: #d5f5e3; color: #1e8449; }
+            .state-chip.fail { background: #fadbd8; color: #c0392b; }
+            .matrix-table { width: 100%; border-collapse: collapse; font-size: 9px; margin-bottom: 4px; }
+            .matrix-table th { background: #2c3e50; color: white; padding: 3px 5px; text-align: center; font-size: 8.5px; border: 1px solid #1a252f; font-weight: bold; }
+            .matrix-table th.corner { background: #34495e; font-style: italic; }
+            .matrix-table td { padding: 3px 5px; text-align: center; font-family: 'Courier New', monospace; border: 1px solid #ddd; }
+            .matrix-table td.diag { background: #fef9e7; color: #7d6608; font-weight: bold; font-size: 8px; }
+            .matrix-table td.rate { background: #eaf2f8; color: #2471a3; }
+            .matrix-table td.zero { color: #ccc; }
+            .matrix-table tbody th { background: #ecf0f1; color: #2c3e50; font-size: 8.5px; }
+            .footer { border-top: 1px solid #ccc; padding-top: 6px; margin-top: auto; display: flex; justify-content: space-between; font-size: 8.5px; color: #999; position: absolute; bottom: 14mm; left: 16mm; right: 16mm; }
+            .print-btn { display: block; margin: 10px auto; background: #3498db; color: white; border: none; padding: 10px 30px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold; }
+            .print-btn:hover { background: #2980b9; }
+        `;
+
+        let html = '<!DOCTYPE html><html><head><title>Combined PFD SIF Report</title><style>' + css + '</style></head><body>';
+        html += '<button class="print-btn no-print" onclick="window.print()">Imprimir / Exportar PDF</button>';
+
+        // ===== PAGE 1: Results + Combined Chart (prominent) + Pie + Info =====
+        html += '<div class="page">';
+        html += '<div class="page-label">1 / 3</div>';
+        html += '<div class="header-bar">';
+        html += '<div class="header-left"><h1>Combined PFD SIF Report</h1><div class="subtitle">' + projectTitle + '</div></div>';
+        html += '<div class="header-right"><strong>Data:</strong> ' + calcDate + '<br><strong>Periodo:</strong> ' + startDateStr + ' — ' + endDateStr + '<br><strong>Metodo:</strong> Markov Chain (hora-a-hora)</div>';
+        html += '</div>';
+
+        // Result banner
+        html += '<div class="result-banner">';
+        html += '<div><div class="pfd-label">PFDavg Total (SIF)</div><div class="pfd-value">' + pfdAvgStr + '</div></div>';
+        html += '<div class="sil-badge">' + silClass + '</div>';
+        html += '</div>';
+
+        // Info boxes
+        html += '<div class="info-grid">';
+        for (const key of GROUPS) {
+            const pv = results[key] ? results[key].pfdavg.toExponential(3) : '—';
+            html += '<div class="info-box"><div class="label">' + zoneDisplayNames[key] + (zones[key].subtitle ? ' — ' + zones[key].subtitle : '') + '</div><div class="val">' + pv + '</div></div>';
+        }
+        html += '</div>';
+
+        // Combined chart - LARGE and prominent
+        html += '<div class="section-title">Analise Temporal Combinada</div>';
+        html += '<div class="combined-chart-area"><canvas id="chart-combined" width="680" height="370"></canvas></div>';
+
+        // Pie chart + variable summary side by side
+        html += '<div class="pie-row">';
+        html += '<div class="pie-col"><canvas id="chart-pie" width="210" height="220"></canvas></div>';
+        html += '<div class="pie-info-col">';
+        html += '<div class="section-title" style="margin-top:0">Resumo por Subsistema</div>';
+        for (const key of GROUPS) {
+            if (!results[key]) continue;
+            const pv = results[key].pfdavg.toExponential(3);
+            const pct = pfdNum > 0 ? ((results[key].pfdavg / pfdNum) * 100).toFixed(1) : '—';
+            const sub = zones[key].subtitle ? ' — ' + zones[key].subtitle : '';
+            html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">';
+            html += '<span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:' + zoneColors[key] + '"></span>';
+            html += '<span style="font-size:10px;font-weight:bold;">' + zoneDisplayNames[key] + sub + '</span>';
+            html += '<span style="font-family:Courier New,monospace;font-size:10px;margin-left:auto;">' + pv + ' (' + pct + '%)</span>';
+            html += '</div>';
+        }
+        html += '</div></div>';
+
+        html += '<div class="footer"><span>Markov Solver for PFD — by Rafael Rocha</span><span>Pag. 1/3 — ' + calcDate + '</span></div>';
+        html += '</div>'; // end page 1
+
+        // ===== PAGE 2: Individual Zone Charts =====
+        html += '<div class="page">';
+        html += '<div class="page-label">2 / 3</div>';
+        html += '<div class="header-bar">';
+        html += '<div class="header-left"><h1>Combined PFD SIF Report</h1><div class="subtitle">' + projectTitle + ' — Analise Individual por Subsistema</div></div>';
+        html += '<div class="header-right"><strong>Data:</strong> ' + calcDate + '<br><strong>Periodo:</strong> ' + startDateStr + ' — ' + endDateStr + '</div>';
+        html += '</div>';
+
+        for (const key of GROUPS) {
+            if (!results[key]) continue;
+            const sub = zones[key].subtitle ? ' — ' + zones[key].subtitle : '';
+            const pv = results[key].pfdavg.toExponential(3);
+            html += '<div class="zone-chart-block">';
+            html += '<div class="zone-chart-header" style="background:' + zoneColors[key] + '"><span>' + zoneDisplayNames[key] + sub + '</span><span class="zpfd">PFDavg: ' + pv + '</span></div>';
+            html += '<canvas id="chart-' + key + '" width="680" height="230"></canvas>';
+            html += '</div>';
+        }
+
+        html += '<div class="footer"><span>Markov Solver for PFD — by Rafael Rocha</span><span>Pag. 2/3 — ' + calcDate + '</span></div>';
+        html += '</div>'; // end page 2
+
+        // ===== PAGE 3: Symbolic Matrices + Variable Tables =====
+        html += '<div class="page">';
+        html += '<div class="page-label">3 / 3</div>';
+        html += '<div class="header-bar">';
+        html += '<div class="header-left"><h1>Combined PFD SIF Report</h1><div class="subtitle">' + projectTitle + ' — Matrizes de Transicao e Dados de Entrada</div></div>';
+        html += '<div class="header-right"><strong>Data:</strong> ' + calcDate + '<br><strong>Periodo:</strong> ' + startDateStr + ' — ' + endDateStr + '</div>';
+        html += '</div>';
+
+        html += '<div class="section-title">Matrizes de Transicao Simbolicas (Markov)</div>';
+        html += matricesHtml;
+
+        html += '<div class="section-title">Dados de Entrada</div>';
+        html += varTablesHtml;
+
+        html += '<div class="footer"><span>Markov Solver for PFD — by Rafael Rocha</span><span>Pag. 3/3 — ' + calcDate + '</span></div>';
+        html += '</div>'; // end page 3
+
+        html += '</body></html>';
+
+        win.document.write(html);
+        win.document.close();
+
+        setTimeout(() => {
+            try {
+                // Combined chart (large)
+                const cc = win.document.getElementById('chart-combined');
+                if (cc) drawChartOnCanvas(cc, times, seriesData, labels, colors, startDateStr, vars.testes, t('calcAllTitle'));
+                // Pie chart
+                const pc = win.document.getElementById('chart-pie');
+                if (pc) drawPieChart(pc, pieData);
+                // Individual zone charts
+                for (const key of GROUPS) {
+                    if (!results[key]) continue;
+                    const zc = win.document.getElementById('chart-' + key);
+                    if (!zc) continue;
+                    const r = results[key];
+                    const sub = zones[key].subtitle ? ' - ' + zones[key].subtitle : '';
+                    const ztitle = t('graphTitle') + ': ' + zoneDisplayNames[key] + sub;
+                    const zTests = vars.testes.filter(tt => tt.group === key);
+                    drawChartOnCanvas(zc, r.tempo, r.failSeriesData, r.failLabels, r.chartColors || ['#1f77b4','#ff7f0e','#2ca02c','#d62728','#9467bd','#8c564b','#e377c2','#7f7f7f','#bcbd22','#17becf'], startDateStr, zTests, ztitle);
+                }
+            } catch(e) { console.error('Report draw error:', e); }
+        }, 250);
+    }
+
+    function abrirJanelaGrafico(times, seriesData, labels, colors, pfdValue, startDateStr, isCombined, testesInfo, chartTitle, pieData) {
+        const win = window.open("", "_blank", "width=900,height=" + (pieData ? '1050' : '700'));
+        if (!win) { alert('Popup blocked!'); return; }
+
+        const title = chartTitle || (isCombined ? t('calcAllTitle') : t('graphTitle'));
+        const displayPfd = pfdValue ? 'PFDavg: ' + pfdValue : '';
+        const pieHtml = pieData ? '<canvas id="pie" width="420" height="350" style="margin-top:15px;"></canvas>' : '';
+
+        win.document.write(`<!DOCTYPE html>
+<html><head><title>${title}</title>
+<style>
+    body { font-family: 'Segoe UI', sans-serif; text-align: center; padding: 20px; background: #f4f7f6; margin: 0; }
+    .card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: inline-block; max-width: 95%; }
+    h2 { color: #2c3e50; margin-bottom: 5px; }
+    .res { font-size: 20px; color: #e67e22; font-weight: bold; margin: 10px 0; }
+    canvas { border: 1px solid #ddd; border-radius: 5px; max-width: 100%; }
+    button { background: #3498db; color: white; border: none; padding: 8px 20px; border-radius: 4px; cursor: pointer; font-size: 14px; margin-top: 10px; }
+    button:hover { background: #2980b9; }
+    .signature { position: fixed; bottom: 10px; left: 10px; font-size: 10px; color: #7f8c8d; font-style: italic; }
+</style></head>
+<body>
+    <div class="card">
+        <h2>${title}</h2>
+        ${displayPfd ? '<p class="res">' + displayPfd + '</p>' : ''}
+        <canvas id="chart" width="820" height="460"></canvas>
+        ${pieHtml}
+        <br>
+        <button onclick="window.print()">Imprimir Relatorio</button>
+    </div>
+    <div class="signature">by Rafael Rocha</div>
+</body></html>`);
+
+        win.document.close();
+
+        setTimeout(() => {
+            try {
+                const chartCanvas = win.document.getElementById('chart');
+                if (!chartCanvas) return;
+                drawChartOnCanvas(chartCanvas, times, seriesData, labels, colors, startDateStr, testesInfo, title);
+                if (pieData) {
+                    const pieCanvas = win.document.getElementById('pie');
+                    if (pieCanvas) drawPieChart(pieCanvas, pieData);
+                }
+            } catch(e) { console.error('Chart draw error:', e); }
+        }, 150);
+    }
+
+    function drawPieChart(canvasEl, pieData) {
+        const c = canvasEl.getContext('2d');
+        const W = canvasEl.width, H = canvasEl.height;
+        const cx = W / 2, cy = H / 2 + 15;
+        const radius = Math.min(W, H) * 0.32;
+
+        c.fillStyle = '#ffffff';
+        c.fillRect(0, 0, W, H);
+
+        // Title
+        c.fillStyle = '#2c3e50';
+        c.font = 'bold 14px "Segoe UI", sans-serif';
+        c.textAlign = 'center';
+        c.fillText(currentLang === 'pt' ? 'Contribuicao PFDavg por Subsistema' : 'PFDavg Contribution by Subsystem', cx, 22);
+
+        const total = pieData.values.reduce((a, b) => a + b, 0);
+        if (total === 0) {
+            c.fillStyle = '#999';
+            c.font = '13px "Segoe UI", sans-serif';
+            c.fillText('No data', cx, cy);
+            return;
+        }
+
+        let startAngle = -Math.PI / 2;
+        const slices = [];
+
+        for (let i = 0; i < pieData.values.length; i++) {
+            const val = pieData.values[i];
+            const pct = val / total;
+            const sliceAngle = pct * 2 * Math.PI;
+            const endAngle = startAngle + sliceAngle;
+
+            // Draw slice
+            c.beginPath();
+            c.moveTo(cx, cy);
+            c.arc(cx, cy, radius, startAngle, endAngle);
+            c.closePath();
+            c.fillStyle = pieData.colors[i];
+            c.fill();
+            c.strokeStyle = '#fff';
+            c.lineWidth = 2;
+            c.stroke();
+
+            // Calculate label position
+            const midAngle = startAngle + sliceAngle / 2;
+            slices.push({ midAngle, pct, val, label: pieData.labels[i], color: pieData.colors[i] });
+
+            startAngle = endAngle;
+        }
+
+        // Draw percentage labels on slices
+        for (const s of slices) {
+            if (s.pct < 0.03) continue;
+            const lx = cx + Math.cos(s.midAngle) * radius * 0.65;
+            const ly = cy + Math.sin(s.midAngle) * radius * 0.65;
+            c.fillStyle = '#fff';
+            c.font = 'bold 13px "Segoe UI", sans-serif';
+            c.textAlign = 'center';
+            c.textBaseline = 'middle';
+            c.fillText((s.pct * 100).toFixed(1) + '%', lx, ly);
+        }
+
+        // Draw legend below
+        const legendY = cy + radius + 25;
+        let lx = cx - (slices.length * 90) / 2;
+        for (const s of slices) {
+            c.fillStyle = s.color;
+            c.fillRect(lx, legendY, 14, 14);
+            c.fillStyle = '#333';
+            c.font = '11px "Segoe UI", sans-serif';
+            c.textAlign = 'left';
+            c.textBaseline = 'middle';
+            c.fillText(s.label + ': ' + s.val.toExponential(2), lx + 18, legendY + 7);
+            lx += Math.max(90, c.measureText(s.label + ': ' + s.val.toExponential(2)).width + 28);
+        }
+    }
+
+    function drawChartOnCanvas(canvasEl, times, seriesData, labels, colors, startDateStr, testesInfo, canvasTitle) {
+        const c = canvasEl.getContext('2d');
+        const W = canvasEl.width, H = canvasEl.height;
+        const margin = { top: 45, right: 30, bottom: 75, left: 85 };
+        const pw = W - margin.left - margin.right;
+        const ph = H - margin.top - margin.bottom;
+
+        const tMin = times[0], tMax = times[times.length - 1];
+        let yMax = 0;
+        for (const s of seriesData) {
+            for (const v of s) { if (v > yMax) yMax = v; }
+        }
+        yMax = yMax > 0 ? yMax * 1.15 : 1e-6;
+
+        c.fillStyle = '#ffffff';
+        c.fillRect(0, 0, W, H);
+
+        function tx(t) { return margin.left + (t - tMin) / (tMax - tMin) * pw; }
+        function ty(y) { return margin.top + ph - (y / yMax) * ph; }
+
+        c.strokeStyle = '#e0e0e0';
+        c.lineWidth = 1;
+        const yTicks = 6;
+        for (let i = 0; i <= yTicks; i++) {
+            const yy = margin.top + ph * i / yTicks;
+            c.beginPath(); c.moveTo(margin.left, yy); c.lineTo(margin.left + pw, yy); c.stroke();
+            const val = yMax * (1 - i / yTicks);
+            c.fillStyle = '#666'; c.font = '11px "Courier New", monospace'; c.textAlign = 'right';
+            c.fillText(val.toExponential(1), margin.left - 8, yy + 4);
+        }
+        // Parse start date for X-axis date labels
+        const startDateParts = startDateStr ? startDateStr.trim().split('/') : null;
+        let chartStartDate = null;
+        if (startDateParts && startDateParts.length === 3) {
+            const dd = parseInt(startDateParts[0], 10);
+            const mm = parseInt(startDateParts[1], 10) - 1;
+            const yy = 2000 + parseInt(startDateParts[2], 10);
+            chartStartDate = new Date(yy, mm, dd);
+        }
+
+        function hoursToDateLabel(hours) {
+            if (!chartStartDate) return Math.round(hours).toLocaleString();
+            const d = new Date(chartStartDate.getTime() + hours * 3600000);
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const yy = String(d.getFullYear() % 100).padStart(2, '0');
+            return mm + '/' + yy;
+        }
+
+        const xTicks = 6;
+        for (let i = 0; i <= xTicks; i++) {
+            const xx = margin.left + pw * i / xTicks;
+            c.beginPath(); c.moveTo(xx, margin.top); c.lineTo(xx, margin.top + ph); c.stroke();
+            const val = tMin + (tMax - tMin) * i / xTicks;
+            c.fillStyle = '#666'; c.font = '11px "Courier New", monospace'; c.textAlign = 'center';
+            c.fillText(hoursToDateLabel(val), xx, margin.top + ph + 20);
+        }
+
+        c.strokeStyle = '#2c3e50'; c.lineWidth = 2;
+        c.beginPath();
+        c.moveTo(margin.left, margin.top);
+        c.lineTo(margin.left, margin.top + ph);
+        c.lineTo(margin.left + pw, margin.top + ph);
+        c.stroke();
+
+        for (let si = 0; si < seriesData.length; si++) {
+            const data = seriesData[si];
+            const color = colors[si % colors.length];
+
+            c.strokeStyle = color;
+            c.lineWidth = 2;
+            c.beginPath();
+            let first = true;
+            for (let i = 0; i < data.length; i++) {
+                const x = tx(times[i]), y = ty(data[i]);
+                if (first) { c.moveTo(x, y); first = false; }
+                else c.lineTo(x, y);
+            }
+            c.stroke();
+
+            c.fillStyle = color;
+            const markEvery = Math.max(1, Math.floor(data.length / 4));
+            for (let i = 0; i < data.length; i += markEvery) {
+                const x = tx(times[i]), y = ty(data[i]);
+                c.beginPath();
+                c.arc(x, y, 3.5, 0, Math.PI * 2);
+                c.fill();
+            }
+        }
+
+        // Draw test date markers (vertical dashed lines with names)
+        if (testesInfo && chartStartDate) {
+            const markerColors = ['#e74c3c', '#8e44ad', '#d35400', '#16a085', '#2c3e50', '#c0392b'];
+            let mci = 0;
+            for (const tst of testesInfo) {
+                const mc = markerColors[mci % markerColors.length];
+                mci++;
+                for (const dateStr of (tst.dates || [])) {
+                    const parts = dateStr.trim().split('/');
+                    if (parts.length !== 3) continue;
+                    const dd = parseInt(parts[0], 10);
+                    const mm = parseInt(parts[1], 10) - 1;
+                    const yy = 2000 + parseInt(parts[2], 10);
+                    const testDate = new Date(yy, mm, dd);
+                    const h = Math.round((testDate - chartStartDate) / 3600000);
+                    if (h < tMin || h > tMax) continue;
+                    const xx = tx(h);
+                    c.save();
+                    c.setLineDash([5, 4]);
+                    c.strokeStyle = mc;
+                    c.lineWidth = 1.5;
+                    c.globalAlpha = 0.7;
+                    c.beginPath();
+                    c.moveTo(xx, margin.top);
+                    c.lineTo(xx, margin.top + ph);
+                    c.stroke();
+                    c.restore();
+                    // Draw test name label
+                    c.save();
+                    c.translate(xx, margin.top + ph + 32);
+                    c.rotate(-Math.PI / 4);
+                    c.fillStyle = mc;
+                    c.font = 'bold 9px "Segoe UI", sans-serif';
+                    c.textAlign = 'left';
+                    c.fillText(tst.n, 0, 0);
+                    c.restore();
+                }
+            }
+        }
+
+        c.fillStyle = '#2c3e50'; c.font = 'bold 16px "Segoe UI", sans-serif'; c.textAlign = 'center';
+        c.fillText(canvasTitle || 'Probabilidade de Falha', W / 2, 25);
+
+        c.fillStyle = '#333'; c.font = '13px "Segoe UI", sans-serif'; c.textAlign = 'center';
+        c.fillText('Data', W / 2, H - 8);
+
+        c.save();
+        c.translate(16, margin.top + ph / 2);
+        c.rotate(-Math.PI / 2);
+        c.fillStyle = '#333'; c.font = '13px "Segoe UI", sans-serif'; c.textAlign = 'center';
+        c.fillText('Probabilidade', 0, 0);
+        c.restore();
+
+        let lx = margin.left + 15, ly = margin.top + 18;
+        for (let i = 0; i < labels.length; i++) {
+            c.fillStyle = colors[i % colors.length];
+            c.fillRect(lx, ly - 5, 18, 3);
+            c.beginPath(); c.arc(lx + 9, ly - 3.5, 3, 0, Math.PI * 2); c.fill();
+            c.fillStyle = '#333'; c.font = '12px "Segoe UI", sans-serif'; c.textAlign = 'left';
+            c.fillText(labels[i], lx + 24, ly);
+            ly += 18;
+        }
+    }
+
+    // Analytical PFD
+    function pfd_RBD_avg_MooN(M, N, ldu, ldd, beta, betad, TI, MTTR) {
+        const k = N - M + 1;
+        const ldu_indep = (1 - beta) * ldu;
+        const PFD_DU_indep = comb(N, k) * Math.pow(ldu_indep * TI, k) / (k + 1);
+        const PFD_DU_CCF = beta * ldu * TI / 2;
+        const ldd_indep = (1 - betad) * ldd;
+        const PFD_DD_indep = comb(N, k) * Math.pow(ldd_indep * MTTR, k);
+        const PFD_DD_CCF = betad * ldd * MTTR;
+        return PFD_DU_indep + PFD_DU_CCF + PFD_DD_indep + PFD_DD_CCF;
+    }
+
+    function pfd_RBD_avg_MooN_1pt(M, N, ldu, ldd, beta, betad, MT, TI, PTC, MTTR) {
+        const pfd_partial = pfd_RBD_avg_MooN(M, N, PTC * ldu, ldd, beta, betad, TI, MTTR);
+        const pfd_full = pfd_RBD_avg_MooN(M, N, (1 - PTC) * ldu, 0, beta, 0, MT, MTTR);
+        return pfd_partial + pfd_full;
+    }
+
+    function pfd_N2595_avg_MooN(M, N, ldu, ldd, beta, betad, TI, MTTR) {
+        if (M === 1 && N === 1) {
+            return ldu * TI / 2 + ldd * MTTR;
+        }
+        if (M === 1 && N === 2) {
+            return 2 * Math.pow((1 - beta) * ldu, 2) * Math.pow(TI, 2) / 3
+                 + beta * ldu * TI / 2
+                 + 2 * Math.pow((1 - betad) * ldd, 2) * Math.pow(MTTR, 2)
+                 + betad * ldd * MTTR;
+        }
+        if (M === 2 && N === 2) {
+            return 2 * (ldu * TI / 2 + ldd * MTTR);
+        }
+        if (M === 2 && N === 3) {
+            return 6 * Math.pow((1 - beta) * ldu, 2) * Math.pow(TI, 2) / 3
+                 + beta * ldu * TI / 2
+                 + 6 * Math.pow((1 - betad) * ldd, 2) * Math.pow(MTTR, 2)
+                 + betad * ldd * MTTR;
+        }
+        if (M === 1 && N === 3) {
+            return 3 * Math.pow((1 - beta) * ldu, 3) * Math.pow(TI, 3) / 4
+                 + beta * ldu * TI / 2
+                 + 3 * Math.pow((1 - betad) * ldd, 3) * Math.pow(MTTR, 3)
+                 + betad * ldd * MTTR;
+        }
+        return pfd_RBD_avg_MooN(M, N, ldu, ldd, beta, betad, TI, MTTR);
+    }
+
+    function pfd_N2595_avg_1oo1_1pt(ldu, ldd, MT, TI, PTC, MTTR) {
+        return PTC * ldu * TI / 2 + (1 - PTC) * ldu * MT / 2 + ldd * MTTR;
+    }
+
+    function pfd_N2595_avg_1oo2_1pt(ldu, ldd, beta, betad, MT, TI, PTC, MTTR) {
+        const ldu_pt = PTC * ldu;
+        const ldu_ft = (1 - PTC) * ldu;
+        return 2 * Math.pow((1 - beta) * ldu_pt, 2) * Math.pow(TI, 2) / 3
+             + 2 * Math.pow((1 - beta) * ldu_ft, 2) * Math.pow(MT, 2) / 3
+             + beta * (ldu_pt * TI / 2 + ldu_ft * MT / 2)
+             + 2 * Math.pow((1 - betad) * ldd, 2) * Math.pow(MTTR, 2)
+             + betad * ldd * MTTR;
+    }
+
+    function pfd_N2595_avg_2oo2_1pt(ldu, ldd, MT, TI, PTC, MTTR) {
+        return 2 * (PTC * ldu * TI / 2 + (1 - PTC) * ldu * MT / 2 + ldd * MTTR);
+    }
+
+    function pfd_N2595_avg_2oo3_1pt(ldu, ldd, beta, betad, MT, TI, PTC, MTTR) {
+        const ldu_pt = PTC * ldu;
+        const ldu_ft = (1 - PTC) * ldu;
+        return 6 * Math.pow((1 - beta) * ldu_pt, 2) * Math.pow(TI, 2) / 3
+             + 6 * Math.pow((1 - beta) * ldu_ft, 2) * Math.pow(MT, 2) / 3
+             + beta * (ldu_pt * TI / 2 + ldu_ft * MT / 2)
+             + 6 * Math.pow((1 - betad) * ldd, 2) * Math.pow(MTTR, 2)
+             + betad * ldd * MTTR;
+    }
+
+    function togglePartialTest() {
+        const chk = document.getElementById('chk_partial_test');
+        const fields = document.getElementById('partial-test-fields');
+        if (event && event.target !== chk) {
+            chk.checked = !chk.checked;
+        }
+        fields.classList.toggle('visible', chk.checked);
+    }
+
+    function calcAnalytical() {
+        const ldu   = parseFloat(document.getElementById('an_ldu').value)   || 0;
+        const ldd   = parseFloat(document.getElementById('an_ldd').value)   || 0;
+        const TI    = parseFloat(document.getElementById('an_TI').value)    || 0;
+        const MT    = parseFloat(document.getElementById('an_MT').value)    || 0;
+        const MTTR  = parseFloat(document.getElementById('an_MTTR').value)  || 0;
+        const beta  = (parseFloat(document.getElementById('an_beta').value)  || 0) / 100;
+        const betad = (parseFloat(document.getElementById('an_betad').value) || 0) / 100;
+        const M     = Math.round(parseFloat(document.getElementById('an_M').value)) || 1;
+        const N     = Math.round(parseFloat(document.getElementById('an_N').value)) || 1;
+        const chk_PTC = document.getElementById('chk_partial_test').checked;
+        const PTC   = (parseFloat(document.getElementById('an_PTC').value) || 0) / 100;
+
+        if (M > N) {
+            document.getElementById('anal-formula-hint').textContent = t('mGtN');
+            document.getElementById('anal-result').style.display = 'none';
+            return;
+        }
+
+        try {
+            let pfd_rbd = 0;
+            let pfd_N2595 = 0;
+
+            if (!chk_PTC) {
+                pfd_rbd = pfd_RBD_avg_MooN(M, N, ldu, ldd, beta, betad, TI, MTTR);
+                pfd_N2595 = pfd_N2595_avg_MooN(M, N, ldu, ldd, beta, betad, TI, MTTR);
+            } else {
+                pfd_rbd = pfd_RBD_avg_MooN_1pt(M, N, ldu, ldd, beta, betad, MT, TI, PTC, MTTR);
+
+                if (M === 1 && N === 1) {
+                    pfd_N2595 = pfd_N2595_avg_1oo1_1pt(ldu, ldd, MT, TI, PTC, MTTR);
+                } else if (M === 1 && N === 2) {
+                    pfd_N2595 = pfd_N2595_avg_1oo2_1pt(ldu, ldd, beta, betad, MT, TI, PTC, MTTR);
+                } else if (M === 2 && N === 2) {
+                    pfd_N2595 = pfd_N2595_avg_2oo2_1pt(ldu, ldd, MT, TI, PTC, MTTR);
+                } else if (M === 2 && N === 3) {
+                    pfd_N2595 = pfd_N2595_avg_2oo3_1pt(ldu, ldd, beta, betad, MT, TI, PTC, MTTR);
+                } else {
+                    pfd_N2595 = t('errN2595');
+                }
+            }
+
+            function fmt(v) {
+                if (typeof v !== 'number' || isNaN(v)) return v;
+                return v.toExponential(1);
+            }
+
+            document.getElementById('anal-pfd_rbd-val').textContent = fmt(pfd_rbd);
+            document.getElementById('anal-pfd_rbd_sub-val').textContent = 'RBD (IEC 61508)';
+
+            const betaPct  = parseFloat(document.getElementById('an_beta').value)  || 0;
+            const betadPct = parseFloat(document.getElementById('an_betad').value) || 0;
+
+            const rows = [
+                [t('votacao'), M + 'oo' + N],
+                ['PFDavg RBD', fmt(pfd_rbd)],
+                ['PFDavg N2595', fmt(pfd_N2595)],
+                ['λdu', fmt(ldu)],
+                ['λdd', fmt(ldd)],
+                ['β', betaPct + '%'],
+                ['βd', betadPct + '%'],
+                ['TI', TI + ' h'],
+                ['MTTR', MTTR + ' h']
+            ];
+
+            document.getElementById('anal-detail-table').innerHTML = rows.map(r =>
+                `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`
+            ).join('');
+
+            document.getElementById('anal-result').style.display = 'block';
+            document.getElementById('anal-formula-hint').innerHTML =
+                '<a href="https://github.com/rafarrocha/PyPFD" target="_blank" style="color:#7f8c8d">GitHub rafarrocha/PyPFD</a>';
+
+        } catch (err) {
+            console.error(err);
+            document.getElementById('anal-formula-hint').textContent = t('errPrefix') + err.message;
+        }
+    }
+
+    function renderLoop() {
+        for (const zoneKey of GROUPS) {
+            const z = zones[zoneKey];
+            const canvas = document.getElementById('canvas-' + zoneKey);
+            const ctx = canvas.getContext('2d');
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.save();
+            ctx.translate(z.viewX, z.viewY);
+            ctx.scale(z.viewScale, z.viewScale);
+
+            z.links.forEach(l => {
+                const s1 = z.states.find(s => s.uid === l.from), s2 = z.states.find(s => s.uid === l.to);
+                if (!s1 || !s2) return;
+                ctx.beginPath();
+                ctx.moveTo(s1.x, s1.y);
+                ctx.quadraticCurveTo(l.cp.x, l.cp.y, s2.x, s2.y);
+                ctx.strokeStyle = (z.selected === l) ? '#e67e22' : '#bdc3c7';
+                ctx.lineWidth = (z.selected === l) ? 3/z.viewScale : 2/z.viewScale;
+                ctx.stroke();
+                const pA = getBezierPoint(0.9, s1, l.cp, s2), pB = getBezierPoint(1.0, s1, l.cp, s2);
+                const ang = Math.atan2(pB.y - pA.y, pB.x - pA.x);
+                const arrowX = s2.x - s2.r * Math.cos(ang), arrowY = s2.y - s2.r * Math.sin(ang);
+                const arrowSize = 12/z.viewScale;
+                ctx.beginPath();
+                ctx.moveTo(arrowX, arrowY);
+                ctx.lineTo(arrowX - arrowSize * Math.cos(ang - 0.4), arrowY - arrowSize * Math.sin(ang - 0.4));
+                ctx.lineTo(arrowX - arrowSize * Math.cos(ang + 0.4), arrowY - arrowSize * Math.sin(ang + 0.4));
+                ctx.closePath(); ctx.fillStyle = ctx.strokeStyle; ctx.fill();
+                if (z.selected === l) {
+                    const cpS = 10/z.viewScale;
+                    ctx.fillStyle = "white"; ctx.strokeStyle = "black"; ctx.lineWidth = 1/z.viewScale;
+                    ctx.fillRect(l.cp.x - cpS/2, l.cp.y - cpS/2, cpS, cpS);
+                    ctx.strokeRect(l.cp.x - cpS/2, l.cp.y - cpS/2, cpS, cpS);
+                }
+                const mid = getBezierPoint(0.5, s1, l.cp, s2);
+                ctx.fillStyle = "#333"; ctx.font = `bold ${12/z.viewScale}px Arial`; ctx.textAlign = "center";
+                ctx.fillText(l.val, mid.x, mid.y - 12/z.viewScale);
+            });
+
+            if(z.connecting) {
+                ctx.beginPath(); ctx.moveTo(z.connecting.x, z.connecting.y); ctx.lineTo(z.mouse.x, z.mouse.y);
+                ctx.strokeStyle = "#3498db"; ctx.lineWidth = 2/z.viewScale; ctx.stroke();
+            }
+
+            z.states.forEach(s => {
+                ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+                ctx.fillStyle = COLORS[s.status]; ctx.fill();
+                ctx.strokeStyle = z.selected===s ? '#e67e22' : '#333';
+                ctx.lineWidth = (z.selected===s ? 4 : 1) / z.viewScale;
+                ctx.stroke();
+                ctx.fillStyle = "#000";
+                ctx.textAlign = "center";
+                ctx.font = `bold ${12/z.viewScale}px Arial`;
+                ctx.fillText(s.value, s.x, s.y - 2/z.viewScale);
+                ctx.font = `${10/z.viewScale}px Arial`;
+                ctx.fillText("ID: " + s.id, s.x, s.y + 12/z.viewScale);
+            });
+
+            ctx.restore();
+        }
+        requestAnimationFrame(renderLoop);
+    }
+
+    let rightSidebarCollapsed = false;
+    function toggleRightSidebar() {
+        rightSidebarCollapsed = !rightSidebarCollapsed;
+        const sb = document.getElementById('sidebar-right');
+        const btn = document.getElementById('sidebar-right-toggle');
+        const resizer = document.getElementById('sidebar-right-resize');
+        sb.classList.toggle('collapsed', rightSidebarCollapsed);
+        btn.textContent = rightSidebarCollapsed ? '◀' : '▶';
+        resizer.style.display = rightSidebarCollapsed ? 'none' : '';
+        setTimeout(resizeCanvases, 300);
+    }
+
+    (() => {
+        const resizer = document.getElementById('sidebar-right-resize');
+        const sidebar = document.getElementById('sidebar-right');
+        let isResizing = false, startX = 0, startW = 0;
+        resizer.addEventListener('mousedown', e => {
+            isResizing = true; startX = e.clientX; startW = sidebar.offsetWidth;
+            resizer.classList.add('dragging');
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+        });
+        document.addEventListener('mousemove', e => {
+            if (!isResizing) return;
+            const newW = Math.max(200, Math.min(500, startW - (e.clientX - startX)));
+            sidebar.style.width = newW + 'px';
+            resizeCanvases();
+        });
+        document.addEventListener('mouseup', () => {
+            if (isResizing) { isResizing = false; resizer.classList.remove('dragging'); document.body.style.cursor = ''; document.body.style.userSelect = ''; }
+        });
+    })();
+
+    init();
+    applyLang();
+</script>
+</body>
+</html>
